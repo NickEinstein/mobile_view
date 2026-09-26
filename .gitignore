@@ -1,0 +1,37 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.fvm/flutter_sdk
+.fvm/versions
+
+# Generated (recreated by `flutter gen-l10n`)
+lib/l10n/gen/
+
+# Local configuration and secrets: never commit.
+# Only the *.example.json templates are tracked.
+config/*.json
+!config/*.example.json
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+key.properties
+android/key.properties
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# API tooling exports carry real tokens
+*.postman_collection.json
+*.postman_environment.json
+
+# OS
+.DS_Store
+Thumbs.db
