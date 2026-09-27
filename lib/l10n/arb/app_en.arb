@@ -1,0 +1,74 @@
+{
+  "@@locale": "en",
+  "appTitle": "Vital Registration",
+  "loading": "Loading",
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingGetStarted": "Get started",
+  "onboardingPageIndicator": "Page {current} of {total}",
+  "@onboardingPageIndicator": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "onboardingPickServiceTitle": "Pick what you need",
+  "onboardingPickServiceBody": "Birth registration, death notification, deed poll, and more — select the service that applies to you.",
+  "onboardingFillInformationTitle": "Fill in your information",
+  "onboardingFillInformationBody": "Enter the required details and upload supporting documents — most applications take under 10 minutes.",
+  "onboardingTrackProgressTitle": "Know where things stand",
+  "onboardingTrackProgressBody": "Get notified at every stage — submitted, under review, approved — right from your dashboard.",
+  "onboardingReceiveRecordTitle": "Receive your official record",
+  "onboardingReceiveRecordBody": "Once approved, download your certificate or document directly, or request a physical copy.",
+  "loginWelcome": "Welcome to {brand}!",
+  "@loginWelcome": {
+    "description": "Login heading. {brand} is the product name, shown in green.",
+    "placeholders": {
+      "brand": { "type": "String" }
+    }
+  },
+  "loginSubtitle": "Kindly provide your details to login",
+  "loginButton": "Login",
+  "emailLabel": "Email Address",
+  "emailHint": "Enter email address",
+  "emailRequired": "Enter your email address.",
+  "emailInvalid": "Enter a valid email address.",
+  "passwordLabel": "Password",
+  "passwordHint": "Enter password",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "forgotPasswordPrompt": "Forgot Password?",
+  "forgotPasswordAction": "Click here",
+  "forgotPasswordUnavailable": "Password reset isn't available in the app yet.",
+  "passwordRequired": "Enter your password.",
+  "passwordTooShort": "Password must be at least {min} characters.",
+  "@passwordTooShort": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+  "signOut": "Sign out",
+  "sessionExpired": "Your session has expired. Please sign in again.",
+  "sessionTimedOut": "You were signed out after a period of inactivity.",
+  "sessionInvalid": "We couldn't verify your account. Please sign in again.",
+  "homeGreeting": "Welcome, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "noModulesAvailable": "No modules are available for your account yet.",
+  "moduleComingSoon": "This module is under construction.",
+  "moduleBirthRegistration": "Birth registration",
+  "moduleDeathRegistration": "Death registration",
+  "moduleApprovals": "Approvals",
+  "moduleReports": "Reports",
+  "errorNetwork": "No internet connection. Check your connection and try again.",
+  "errorTimeout": "The server took too long to respond. Please try again.",
+  "errorUnauthorized": "Your credentials were not accepted.",
+  "errorForbidden": "You don't have permission to do that.",
+  "errorNotFound": "We couldn't find what you were looking for.",
+  "errorValidation": "Some details are invalid. Please check and try again.",
+  "errorServer": "Something went wrong on our side. Please try again later.",
+  "errorUnexpected": "Something unexpected happened. Please try again."
+}
