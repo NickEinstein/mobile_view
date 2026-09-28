@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:vital_reg_mobile/core/error/failure.dart';
+import 'package:vital_reg_mobile/core/network/cancellation.dart';
 import 'package:vital_reg_mobile/core/network/error_mapper.dart';
 import 'package:vital_reg_mobile/core/network/request_flags.dart';
 import 'package:vital_reg_mobile/core/observability/crash_reporter.dart';
@@ -20,44 +21,53 @@ class ApiClient {
     required Decoder<T> decode,
     Map<String, Object?>? query,
     bool authenticated = true,
-    CancelToken? cancelToken,
+    Cancellation? cancellation,
   }) => _send(
     () => _dio.get<Object?>(
       path,
       queryParameters: query,
       options: _options(authenticated),
-      cancelToken: cancelToken,
+      cancelToken: _token(cancellation),
     ),
     decode,
   );
 
+  /// [body] may be a `FormData` for file uploads; [onSendProgress] then
+  /// reports bytes sent and total.
   Future<Result<T>> post<T>(
     String path, {
     required Decoder<T> decode,
     Object? body,
     bool authenticated = true,
-    CancelToken? cancelToken,
+    Map<String, String>? headers,
+    ProgressCallback? onSendProgress,
+    Cancellation? cancellation,
   }) => _send(
     () => _dio.post<Object?>(
       path,
       data: body,
-      options: _options(authenticated),
-      cancelToken: cancelToken,
+      options: _options(authenticated).copyWith(headers: headers),
+      onSendProgress: onSendProgress,
+      cancelToken: _token(cancellation),
     ),
     decode,
   );
 
+  /// With [authenticated] false and a full URL in [path], uploads to
+  /// storage (e.g. a presigned upload URL).
   Future<Result<T>> put<T>(
     String path, {
     required Decoder<T> decode,
     Object? body,
-    CancelToken? cancelToken,
+    bool authenticated = true,
+    Map<String, Object?>? headers,
+    Cancellation? cancellation,
   }) => _send(
     () => _dio.put<Object?>(
       path,
       data: body,
-      options: _options(true),
-      cancelToken: cancelToken,
+      options: _options(authenticated).copyWith(headers: headers),
+      cancelToken: _token(cancellation),
     ),
     decode,
   );
@@ -66,13 +76,13 @@ class ApiClient {
     String path, {
     required Decoder<T> decode,
     Object? body,
-    CancelToken? cancelToken,
+    Cancellation? cancellation,
   }) => _send(
     () => _dio.patch<Object?>(
       path,
       data: body,
       options: _options(true),
-      cancelToken: cancelToken,
+      cancelToken: _token(cancellation),
     ),
     decode,
   );
@@ -81,16 +91,23 @@ class ApiClient {
     String path, {
     required Decoder<T> decode,
     Object? body,
-    CancelToken? cancelToken,
+    Cancellation? cancellation,
   }) => _send(
     () => _dio.delete<Object?>(
       path,
       data: body,
       options: _options(true),
-      cancelToken: cancelToken,
+      cancelToken: _token(cancellation),
     ),
     decode,
   );
+
+  static CancelToken? _token(Cancellation? cancellation) {
+    if (cancellation == null) return null;
+    final token = CancelToken();
+    cancellation.onCancel(token.cancel);
+    return token;
+  }
 
   Options _options(bool authenticated) =>
       Options(extra: {RequestFlags.skipAuth: !authenticated});
