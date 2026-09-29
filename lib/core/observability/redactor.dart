@@ -11,6 +11,7 @@ abstract final class Redactor {
     'xapikey',
     'pin',
     'otp',
+    'code',
     'nin',
     'bvn',
     'phone',
@@ -21,6 +22,8 @@ abstract final class Redactor {
     'photo',
     'image',
     'base64image',
+    // A face image sent to the face service.
+    'template',
     'fingerprint',
     'signature',
   };
@@ -32,6 +35,17 @@ abstract final class Redactor {
         normalized.contains('token') ||
         normalized.contains('secret');
   }
+
+  static final _email = RegExp(r'[\w.+-]+@[\w-]+(\.[\w-]+)+');
+
+  /// NINs, BVNs and phone numbers are 11 digits; masking every run of 7 or
+  /// more also catches them inside longer text.
+  static final _longNumber = RegExp(r'\d{7,}');
+
+  /// Masks emails and long numbers in free text that has no keys to go by,
+  /// such as an exception message.
+  static String redactText(String text) =>
+      text.replaceAll(_email, mask).replaceAll(_longNumber, mask);
 
   static Object? redact(Object? value) => switch (value) {
     final Map<Object?, Object?> map => {
