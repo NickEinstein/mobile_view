@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vital_reg_mobile/app/dev/fake_backend_interceptor.dart';
 import 'package:vital_reg_mobile/core/config/app_config.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/core/network/api_client.dart';
@@ -41,6 +42,9 @@ Future<void> configureDependencies(AppConfig config) async {
     sessionManager: sessionManager,
     logger: logger,
   );
+  if (config.useFakeApi) {
+    dio.interceptors.insert(0, FakeBackendInterceptor());
+  }
 
   getIt
     ..registerSingleton<AppConfig>(config)
