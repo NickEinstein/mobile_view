@@ -41,7 +41,7 @@ GoRouter createRouter({
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) => LoginPage(onForgotPassword: () {}),
       ),
       // Signed-in area: tab pages, each with its own history. (Services is
       // a sheet, not a page; see AppShell.)

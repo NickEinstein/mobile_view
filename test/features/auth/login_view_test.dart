@@ -38,7 +38,7 @@ void main() {
       BlocProvider<AuthBloc>.value(value: authBloc),
       BlocProvider<LoginCubit>.value(value: loginCubit),
     ],
-    child: const LoginView(),
+    child: LoginView(onForgotPassword: () {}),
   );
 
   FilledButton loginButton(WidgetTester tester) =>

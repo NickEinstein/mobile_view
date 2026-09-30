@@ -82,7 +82,9 @@ class _PasswordField extends StatelessWidget {
 }
 
 class _ForgotPassword extends StatelessWidget {
-  const _ForgotPassword();
+  const _ForgotPassword({required this.onPressed});
+
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +98,7 @@ class _ForgotPassword extends StatelessWidget {
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
         ),
-        onPressed: () => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.forgotPasswordUnavailable))),
+        onPressed: onPressed,
         child: Text.rich(
           TextSpan(
             text: '${l10n.forgotPasswordPrompt} ',
