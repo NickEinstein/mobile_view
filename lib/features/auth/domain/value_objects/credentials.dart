@@ -19,6 +19,21 @@ final class Email extends FormzInput<String, EmailError> {
   }
 }
 
+enum OtpCodeError { incomplete }
+
+/// The verification code emailed during password reset.
+final class OtpCode extends FormzInput<String, OtpCodeError> {
+  const OtpCode.pure() : super.pure('');
+  const OtpCode.dirty([super.value = '']) : super.dirty();
+
+  static const length = 4;
+  static final _pattern = RegExp('^\\d{$length}\$');
+
+  @override
+  OtpCodeError? validator(String value) =>
+      _pattern.hasMatch(value) ? null : OtpCodeError.incomplete;
+}
+
 enum PasswordError { empty, tooShort }
 
 final class Password extends FormzInput<String, PasswordError> {

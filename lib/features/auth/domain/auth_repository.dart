@@ -16,4 +16,18 @@ abstract interface class AuthRepository {
   Future<Result<User>> currentUser();
 
   Future<void> signOut({required SessionEndReason reason});
+
+  /// Emails a verification code to [email].
+  Future<Result<void>> requestPasswordReset({required Email email});
+
+  /// Exchanges the emailed code for a single-use reset token.
+  Future<Result<String>> verifyPasswordResetCode({
+    required Email email,
+    required OtpCode code,
+  });
+
+  Future<Result<void>> resetPassword({
+    required String resetToken,
+    required Password password,
+  });
 }

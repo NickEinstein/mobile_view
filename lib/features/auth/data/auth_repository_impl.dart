@@ -109,4 +109,21 @@ class AuthRepositoryImpl implements AuthRepository {
       return null;
     }
   }
+
+  @override
+  Future<Result<void>> requestPasswordReset({required Email email}) =>
+      _api.requestPasswordReset(email: email.value.trim());
+
+  @override
+  Future<Result<String>> verifyPasswordResetCode({
+    required Email email,
+    required OtpCode code,
+  }) =>
+      _api.verifyPasswordResetCode(email: email.value.trim(), code: code.value);
+
+  @override
+  Future<Result<void>> resetPassword({
+    required String resetToken,
+    required Password password,
+  }) => _api.resetPassword(resetToken: resetToken, password: password.value);
 }
