@@ -2,5 +2,6 @@
   "API_BASE_URL": "https://api.staging.vitalreg.example/v1",
   "SESSION_TIMEOUT_MINUTES": "15",
   "SENTRY_DSN": "",
-  "FEATURES": "birthRegistration,deathRegistration,approvals"
+  "FEATURES": "birthRegistration,deathRegistration,approvals",
+  "DEVICE_ID": ""
 }

@@ -15,7 +15,7 @@ import '../../helpers/fakes.dart';
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
 const _user = User(id: '1', fullName: 'Ada', role: UserRole.registrar);
-const _tokens = AuthTokens(accessToken: 'a', refreshToken: 'r');
+const _tokens = AuthTokens(accessToken: 'a');
 
 void main() {
   late SessionManager session;

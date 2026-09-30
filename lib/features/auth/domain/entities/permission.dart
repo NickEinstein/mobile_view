@@ -30,6 +30,13 @@ enum UserRole {
 
   final Set<Permission> permissions;
 
+  /// The role for `Role_ID`: registrars (3), sub-registrars (4) and
+  /// hospitals (7); null for roles this app doesn't serve.
+  static UserRole? fromRoleId(Object? roleId) => switch ('$roleId') {
+    '3' || '4' || '7' => registrar,
+    _ => null,
+  };
+
   /// Unknown roles are rejected, never mapped to a default role.
   static UserRole? tryParse(String value) {
     for (final role in values) {

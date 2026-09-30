@@ -40,6 +40,25 @@ void main() {
       );
     });
 
+    test("maps 406 to ValidationFailure with the server's message", () {
+      final failure = mapDioException(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.badResponse,
+          response: Response<Object?>(
+            requestOptions: RequestOptions(path: '/auth/login'),
+            statusCode: 406,
+            data: {'message': 'Incorrect credentials for login'},
+          ),
+        ),
+      );
+
+      expect(
+        failure,
+        const ValidationFailure(message: 'Incorrect credentials for login'),
+      );
+    });
+
     test('maps 422 with field errors to ValidationFailure', () {
       final failure = mapDioException(
         _badResponse(422, {

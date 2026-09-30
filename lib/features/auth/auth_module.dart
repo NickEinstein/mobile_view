@@ -13,6 +13,8 @@ void registerAuthModule(GetIt getIt) {
         api: getIt(),
         sessionManager: getIt(),
         storage: getIt(),
+        userStorage: getIt(),
+        deviceId: getIt(),
         crashReporter: getIt(),
       ),
     );

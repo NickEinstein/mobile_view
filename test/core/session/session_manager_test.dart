@@ -4,7 +4,7 @@ import 'package:vital_reg_mobile/core/session/session_manager.dart';
 
 import '../../helpers/fakes.dart';
 
-const _tokens = AuthTokens(accessToken: 'a', refreshToken: 'r');
+const _tokens = AuthTokens(accessToken: 'a');
 
 void main() {
   group('SessionManager', () {
@@ -17,10 +17,9 @@ void main() {
       expect(session.lastEndReason, isNull);
     });
 
-    test('restore with an expired refresh token ends as expired', () async {
+    test('restore with an expired token ends as expired', () async {
       final expired = AuthTokens(
-        accessToken: 'a',
-        refreshToken: fakeJwt(expiresAt: DateTime.utc(2000)),
+        accessToken: fakeJwt(expiresAt: DateTime.utc(2000)),
       );
       final storage = InMemoryTokenStorage(expired);
       final session = SessionManager(storage);
