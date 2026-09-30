@@ -2,5 +2,5 @@
   "API_BASE_URL": "https://api.dev.vitalreg.example/v1",
   "SESSION_TIMEOUT_MINUTES": "15",
   "SENTRY_DSN": "",
-  "FEATURES": "birthRegistration,deathRegistration,approvals,reports"
+  "FEATURES": "birthRegistration,birthAttestation,modifications,stillBirthRegistration,deathRegistration,surrogacyBirthRegistration,adoptedChildRegistration,singleParentBirthRegistration,foreignBirthNotification,reissuance,approvals,reports"
 }

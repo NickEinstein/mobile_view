@@ -1,12 +1,26 @@
 /// Capabilities, not screens: one screen adapts to what the user may do.
-enum Permission { registerBirth, registerDeath, approveRecords, viewReports }
+enum Permission {
+  registerBirth,
+  registerDeath,
+  modifyRecords,
+  reissueCertificates,
+  approveRecords,
+  viewReports,
+}
 
 /// The roles this app serves. Client checks are only for UX.
 enum UserRole {
-  registrar({Permission.registerBirth, Permission.registerDeath}),
+  registrar({
+    Permission.registerBirth,
+    Permission.registerDeath,
+    Permission.modifyRecords,
+    Permission.reissueCertificates,
+  }),
   supervisor({
     Permission.registerBirth,
     Permission.registerDeath,
+    Permission.modifyRecords,
+    Permission.reissueCertificates,
     Permission.approveRecords,
     Permission.viewReports,
   }),
