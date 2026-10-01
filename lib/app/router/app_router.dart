@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vital_reg_mobile/app/router/app_module.dart';
@@ -11,6 +13,7 @@ import 'package:vital_reg_mobile/app/view/tab_placeholder_page.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
+import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
 import 'package:vital_reg_mobile/features/onboarding/domain/onboarding_repository.dart';
 import 'package:vital_reg_mobile/features/onboarding/presentation/view/onboarding_page.dart';
 
@@ -41,7 +44,15 @@ GoRouter createRouter({
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => LoginPage(onForgotPassword: () {}),
+        builder: (context, state) => LoginPage(
+          onForgotPassword: () =>
+              unawaited(context.push<void>(AppRoutes.forgotPassword)),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) =>
+            PasswordResetPage(onExit: () => context.go(AppRoutes.login)),
       ),
       // Signed-in area: tab pages, each with its own history. (Services is
       // a sheet, not a page; see AppShell.)
