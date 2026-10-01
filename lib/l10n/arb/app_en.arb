@@ -86,6 +86,9 @@
   "sessionExpired": "Your session has expired. Please sign in again.",
   "sessionTimedOut": "You were signed out after a period of inactivity.",
   "sessionInvalid": "We couldn't verify your account. Please sign in again.",
+  "greetingMorning": "Good morning",
+  "greetingAfternoon": "Good afternoon",
+  "greetingEvening": "Good evening",
   "homeGreeting": "Welcome, {name}",
   "@homeGreeting": {
     "placeholders": {
@@ -137,5 +140,18 @@
   "logOutConfirmTitle": "Log out?",
   "logOutConfirmMessage": "Applications you haven't submitted, with their photos and documents, will be removed from this device. Payments you have made are kept.",
   "logOutCancel": "Cancel",
-  "tabComingSoon": "This section is under construction."
+  "tabComingSoon": "This section is under construction.",
+  "statBirthRegistrations": "Birth Registrations (0-17)",
+  "statBirthAttestation": "Birth Attestation (18+)",
+  "statDeathRegistrations": "Death Registrations",
+  "statStillBirths": "Still Births",
+  "chartYearTotal": "Year total: {count}",
+  "@chartYearTotal": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "chartChooseYear": "Choose year",
+  "dashboardLoadFailed": "Couldn't load your statistics.",
+  "tryAgain": "Try again"
 }
