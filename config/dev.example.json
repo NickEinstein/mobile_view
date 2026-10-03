@@ -1,5 +1,6 @@
 {
   "API_BASE_URL": "https://api.dev.vitalreg.example/v1",
+  "FACE_VERIFICATION_URL": "https://face.demo.test/api/v1/matchWithSelfie",
   "SESSION_TIMEOUT_MINUTES": "15",
   "SENTRY_DSN": "",
   "FEATURES": "birthRegistration,birthAttestation,modifications,stillBirthRegistration,deathRegistration,surrogacyBirthRegistration,adoptedChildRegistration,singleParentBirthRegistration,foreignBirthNotification,reissuance,approvals,reports",

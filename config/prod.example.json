@@ -1,5 +1,6 @@
 {
   "API_BASE_URL": "https://api.vitalreg.example/v1",
+  "FACE_VERIFICATION_URL": "",
   "SESSION_TIMEOUT_MINUTES": "15",
   "SENTRY_DSN": "",
   "FEATURES": "birthRegistration"

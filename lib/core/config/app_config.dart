@@ -14,6 +14,7 @@ final class AppConfig {
     this.sentryDsn = '',
     this.useFakeApi = false,
     this.deviceIdOverride,
+    this.faceVerificationUrl,
   });
 
   factory AppConfig.fromEnvironment(Flavor flavor) {
@@ -26,6 +27,7 @@ final class AppConfig {
     const features = String.fromEnvironment('FEATURES');
     const useFakeApi = bool.fromEnvironment('USE_FAKE_API');
     const deviceId = String.fromEnvironment('DEVICE_ID');
+    const faceVerificationUrl = String.fromEnvironment('FACE_VERIFICATION_URL');
 
     if (apiBaseUrl.isEmpty) {
       throw StateError(
@@ -42,6 +44,13 @@ final class AppConfig {
     if (flavor != Flavor.dev && !apiBaseUrl.startsWith('https://')) {
       throw StateError('Non-dev builds must use an https:// API_BASE_URL.');
     }
+    if (flavor != Flavor.dev &&
+        faceVerificationUrl.isNotEmpty &&
+        !faceVerificationUrl.startsWith('https://')) {
+      throw StateError(
+        'Non-dev builds must use an https:// FACE_VERIFICATION_URL.',
+      );
+    }
 
     return AppConfig(
       flavor: flavor,
@@ -51,6 +60,9 @@ final class AppConfig {
       sentryDsn: sentryDsn,
       useFakeApi: useFakeApi,
       deviceIdOverride: deviceId.isEmpty ? null : deviceId,
+      faceVerificationUrl: faceVerificationUrl.isEmpty
+          ? null
+          : faceVerificationUrl,
     );
   }
 
@@ -67,4 +79,8 @@ final class AppConfig {
   /// Dev and staging only: a fixed device id, so testers can reuse the one
   /// their account is bound to. Keep it in the git-ignored config file.
   final String? deviceIdOverride;
+
+  /// The face service that compares a capture with the NIN photo (public,
+  /// no credentials). Without it, faces can't be matched.
+  final String? faceVerificationUrl;
 }
