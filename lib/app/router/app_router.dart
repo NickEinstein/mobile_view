@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vital_reg_mobile/app/router/app_module.dart';
 import 'package:vital_reg_mobile/app/router/redirect.dart';
@@ -14,8 +15,14 @@ import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/details/view/application_details_page.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/nin_check/view/nin_check_page.dart';
 import 'package:vital_reg_mobile/features/onboarding/domain/onboarding_repository.dart';
 import 'package:vital_reg_mobile/features/onboarding/presentation/view/onboarding_page.dart';
+import 'package:vital_reg_mobile/features/payments/presentation/view/payment_page.dart';
 
 GoRouter createRouter({
   required AuthBloc authBloc,
@@ -69,13 +76,16 @@ GoRouter createRouter({
                   // disabled module isn't routable.
                   for (final module in AppModule.values)
                     if (featureFlags.isEnabled(module.feature))
-                      GoRoute(
-                        parentNavigatorKey: rootNavigatorKey,
-                        // Child paths are relative to '/'.
-                        path: module.path.substring(1),
-                        builder: (context, state) =>
-                            ModulePlaceholderPage(module: module),
-                      ),
+                      if (module == AppModule.birthRegistration)
+                        _birthRegistrationRoute(rootNavigatorKey)
+                      else
+                        GoRoute(
+                          parentNavigatorKey: rootNavigatorKey,
+                          // Child paths are relative to '/'.
+                          path: module.path.substring(1),
+                          builder: (context, state) =>
+                              ModulePlaceholderPage(module: module),
+                        ),
                 ],
               ),
             ],
@@ -97,6 +107,57 @@ GoRouter createRouter({
             ],
           ),
         ],
+      ),
+    ],
+  );
+}
+
+/// Birth Registration: home, "New Birth Registration" (NIN check), form
+/// (with the fee's payment from age 5), and one application's details.
+GoRoute _birthRegistrationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.birthRegistration;
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => BirthRegistrationHomePage(
+      onStartApplication: () => context.push<void>(AppRoutes.birthNinCheck),
+      onResumeApplication: () => context.push<void>(AppRoutes.birthForm),
+      onOpenApplication: (id) =>
+          context.push<void>(AppRoutes.birthApplication(id)),
+    ),
+    routes: [
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthNinCheck.substring(home.length + 1),
+        // The form replaces this screen, so Back from the form returns
+        // to the Birth Registration home.
+        builder: (context, state) => NinCheckPage(
+          onDone: () => context.pushReplacement(AppRoutes.birthForm),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthForm.substring(home.length + 1),
+        builder: (context, state) => RegistrationFormPage(
+          onExit: () => context.pop(),
+          onPayment: () => context.push<void>(AppRoutes.birthPayment),
+        ),
+      ),
+      // The fee for a child of 5 or older, over the form; closing it
+      // returns there.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthPayment.substring(home.length + 1),
+        builder: (context, state) => PaymentPage(
+          source: GetIt.instance<BirthRegistrationRepository>().payments,
+          onPaid: () => context.pop(),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthApplicationPattern.substring(home.length + 1),
+        builder: (context, state) =>
+            ApplicationDetailsPage(id: state.pathParameters['id']!),
       ),
     ],
   );
