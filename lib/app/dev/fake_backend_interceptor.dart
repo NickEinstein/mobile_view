@@ -14,7 +14,13 @@ part 'fake_backend_data.dart';
 ///   child born in 2016, so Birth Registration asks for the fee;
 /// - Birth Registration answers in the backend's shapes; only its
 ///   places come from `/option/*` (LGAs state by state),
-///   and submitting succeeds when the fields the API requires are there.
+///   and submitting succeeds when the fields the API requires are there;
+/// - Modifications list sample requests in the backend's shapes, and
+///   find a record for any certificate number except `000000`; sending a
+///   modification always succeeds (documents "upload" to nowhere); the
+///   queried birth request is a date of birth change missing its request
+///   letter (attestation: a misspelled name; death: the age at death), and
+///   answering it always succeeds.
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -258,6 +264,42 @@ class FakeBackendInterceptor extends Interceptor {
               'State_ID': '$state',
             },
         ]);
+      case ('GET', final path)
+          when path.startsWith('/modification/') && path.contains('/single/'):
+        final id = path.substring(path.lastIndexOf('/') + 1);
+        _ok(handler, options, switch (path.split('/')[2]) {
+          'birth-attestation' => _queriedAttestation(id),
+          'death-registration' => _queriedDeath(id),
+          _ => _queriedModification(id),
+        });
+      case ('POST' || 'PATCH', final path)
+          when path.startsWith('/modification/') && path.split('/').length == 3:
+        _ok(handler, options, {
+          'message': 'Modification request submitted successfully.',
+        });
+      case ('GET', final path)
+          when path.startsWith('/modification/') && path.contains('/cert/'):
+        final number = path.substring(path.lastIndexOf('/') + 1);
+        if (number == '000000') {
+          _fail(handler, options, 404, 'No record found.');
+        } else {
+          _ok(handler, options, {
+            'data': _modificationRecord(path.split('/')[2], number),
+          });
+        }
+      case ('GET', final path)
+          when path.startsWith('/modification/') && path.endsWith('/stats'):
+        _ok(handler, options, {
+          // An SQL sum, which arrives as a string.
+          'total': '${_modificationCounts.values.reduce((a, b) => a + b)}',
+        });
+      case ('GET', final path)
+          when path.startsWith('/modification/') && path.endsWith('/list'):
+        _ok(
+          handler,
+          options,
+          _modifications(path.split('/')[2], options.queryParameters),
+        );
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {
@@ -464,12 +506,193 @@ class FakeBackendInterceptor extends Interceptor {
   static String _attestationNumber(String status, int index) =>
       'ATT${_attestationStatuses.indexOf(status)}${'$index'.padLeft(4, '0')}';
 
+  static const _modificationCounts = {
+    'pending': 3,
+    'approved': 2,
+    'queried': 1,
+  };
+
+  /// Rows; each kind names its fields
+  /// differently.
+  static Map<String, Object?> _modifications(
+    String kind,
+    Map<String, dynamic> query,
+  ) {
+    final status = query['type'] as String? ?? 'pending';
+    final search = (query['search'] as String? ?? '').toLowerCase();
+    final rows = <Map<String, Object?>>[];
+    for (final (i, (name, number, date)) in _people.indexed.take(
+      _modificationCounts[status] ?? 0,
+    )) {
+      if (search.isNotEmpty &&
+          !name.toLowerCase().contains(search) &&
+          !number.toLowerCase().contains(search)) {
+        continue;
+      }
+      final [firstname, surname] = name.split(' ');
+      final person = {'firstname': firstname, 'surname': surname};
+      final modified = [
+        {'datetime_modified': date},
+      ];
+      rows.add(switch (kind) {
+        'birth-attestation' => {
+          'id': '$status-$i',
+          'personData': person,
+          'attestation_number': 'BA$number',
+          'date_created': date,
+        },
+        'death-registration' => {
+          'id': '$status-$i',
+          'deceasedData': person,
+          'death_certificate_number': 'DR$number',
+          'Modification': modified,
+        },
+        _ => {
+          'id': '$status-$i',
+          'childData': person,
+          'birth_number': number,
+          'Modification': modified,
+        },
+      });
+    }
+    return {
+      'result': rows,
+      'pagination': {'page': 1, 'pages': 1, 'limit': 10},
+    };
+  }
+
   static const _optionStates = [(1, 'Abia'), (15, 'FCT'), (25, 'Lagos')];
   static const _optionLgas = {
     1: [(11, 'Isiukwuato'), (12, 'Umuahia North')],
     15: [(151, 'AMAC'), (152, 'Bwari')],
     25: [(251, 'Ikeja'), (252, 'Surulere')],
   };
+
+  /// A queried birth modification as `single` returns it.
+  static Map<String, Object?> _queriedModification(String id) => {
+    'data': {
+      'Birth_Reg_ID': 40,
+      'Certificate_No': 'FA30087677',
+      'child_surname': 'Lee',
+      'child_firstname': 'Michael',
+      'mother_surname': 'Lee',
+      'mother_firstname': 'Grace',
+      'father_surname': 'Lee',
+      'father_firstname': 'Daniel',
+      'Modification': [
+        {
+          'id': id,
+          'reference': 'BRTDEMOQUERIED',
+          'mod_type': 'child particulars',
+          'mod_field': 'applicant_dob',
+          'mod_reason': 'incorrect age entered',
+          'comment': 'Hospital record shows a different date.',
+          'child_age': '2020-09-08T00:00:00.000Z',
+          'supportingDocument': [
+            {
+              'type': 'date-of-birth-affidavit',
+              'file': 'modifications/demo-affidavit',
+              'mimeType': 'image/jpeg',
+            },
+          ],
+        },
+      ],
+    },
+    'queried': {
+      'type': 'modification',
+      'reason': 'The request letter is missing. Upload it and resend.',
+    },
+  };
+
+  /// Queried attestation and death modifications: the values sent are on
+  /// `Modification[0]`.
+  static Map<String, Object?> _queriedAttestation(String id) => {
+    'data': {
+      'id': 41,
+      'attestation_number': 'BAFA30087677',
+      'Modification': [
+        {
+          'id': id,
+          'reference': 'BRTDEMOQUERIEDBA',
+          'mod_type': 'particulars_of_applicant',
+          'mod_field': 'applicant_name',
+          'mod_reason': 'misspelling of name',
+          'applicant_surname': 'Hasan',
+          'applicant_firstname': 'Suleiman',
+        },
+      ],
+    },
+    'queried': {
+      'reason':
+          'The surname still looks misspelled. Check it against the '
+          'birth certificate.',
+    },
+  };
+
+  static Map<String, Object?> _queriedDeath(String id) => {
+    'data': {
+      'id': 42,
+      'death_certificate_number': 'DRFA30087677',
+      'Modification': [
+        {
+          'id': id,
+          'reference': 'BRTDEMOQUERIEDDR',
+          'mod_type': 'deceased_age_at_death',
+          'mod_field': 'deceased_age_at_death',
+          'mod_reason': 'incorrect age at entered',
+          'deceased_age_at_death': 170,
+        },
+      ],
+    },
+    'queried': {'reason': 'The age at death is not possible.'},
+  };
+
+  /// A registered record as the lookup returns it.
+  static Map<String, Object?> _modificationRecord(String kind, String number) {
+    final person = {
+      'surname': 'Hassan',
+      'firstname': 'Suleiman',
+      'middle_name': '',
+      'birth_date': '2020-09-09T00:00:00.000Z',
+      'gender': 1,
+      'birth_state': 1,
+      'birth_lga': 11,
+      'town_of_birth': 'Ovim',
+    };
+    final parent = {'surname': 'Ikemefuna', 'firstname': 'Devine'};
+    return switch (kind) {
+      'birth-attestation' => {
+        'id': 41,
+        'personData': {
+          ...person,
+          'birth_date': '1990-03-14T00:00:00.000Z',
+          'origin_state': 25,
+          'origin_lga': 251,
+          'town_of_origin': 'Ikeja',
+        },
+        'attestation_number': number,
+        'mother_surname': 'Hassan',
+        'mother_firstname': 'Amina',
+        'mother_maiden_name': 'Bello',
+        'father_surname': 'Hassan',
+        'father_firstname': 'Musa',
+      },
+      'death-registration' => {
+        'id': 42,
+        'deceasedData': person,
+        'death_certificate_number': number,
+        'deceased_age_at_death': 70,
+        'deceased_date_of_death': '2025-02-04',
+      },
+      _ => {
+        'Birth_Reg_ID': 40,
+        'Certificate_No': number,
+        'childData': person,
+        'motherData': parent,
+        'fatherData': parent,
+      },
+    };
+  }
 
   void _ok(
     RequestInterceptorHandler handler,
