@@ -18,6 +18,20 @@ abstract final class AppRoutes {
   static String birthApplication(String id) =>
       '$birthRegistration/applications/${Uri.encodeComponent(id)}';
 
+  // Birth Attestation (the module path must match AppModule).
+  static const birthAttestation = '/registrations/birth-attestation';
+  static const birthAttestationNew = '$birthAttestation/new';
+  static const birthAttestationNin = '$birthAttestation/nin';
+  static const birthAttestationFace = '$birthAttestation/face';
+  static const birthAttestationForm = '$birthAttestation/form';
+  static const birthAttestationApplicationPattern =
+      '$birthAttestation/applications/:id';
+  static String birthAttestationApplication(String id) =>
+      '$birthAttestation/applications/${Uri.encodeComponent(id)}';
+  static const birthAttestationQueriedPattern = '$birthAttestation/queried/:id';
+  static String birthAttestationQueried(String id) =>
+      '$birthAttestation/queried/${Uri.encodeComponent(id)}';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login, forgotPassword};
 
