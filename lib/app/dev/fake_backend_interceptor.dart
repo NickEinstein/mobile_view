@@ -21,6 +21,8 @@ part 'fake_backend_data.dart';
 ///   queried birth request is a date of birth change missing its request
 ///   letter (attestation: a misspelled name; death: the age at death), and
 ///   answering it always succeeds.
+/// - Still Birth lists sample registrations in the backend's shapes, and
+///   registering one always succeeds (the signature "uploads" to nowhere).
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -300,6 +302,31 @@ class FakeBackendInterceptor extends Interceptor {
           options,
           _modifications(path.split('/')[2], options.queryParameters),
         );
+      // Still Birth, on the backend's paths.
+      case ('GET', '/stillbirth/stats'):
+        _ok(handler, options, 3);
+      case ('GET', '/stillbirth/list/'):
+        _ok(handler, options, _stillBirths(options.queryParameters));
+      // After the fixed paths, as the backend's `GET /stillbirth/:id`.
+      case ('GET', _)
+          when path.startsWith('/stillbirth/') &&
+              path.indexOf('/', '/stillbirth/'.length) < 0:
+        final record = _stillBirth(path.substring(path.lastIndexOf('/') + 1));
+        if (record == null) {
+          _fail(handler, options, 404, 'No such still birth.');
+        } else {
+          // As the backend's `single`: without the record's id.
+          _ok(handler, options, {
+            'data': {...record}..remove('id'),
+          });
+        }
+      // As the backend: the new record.
+      case ('POST', '/stillbirth/add'):
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Record added successfully',
+          'item': {'id': 30087999},
+        });
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {
@@ -460,6 +487,67 @@ class FakeBackendInterceptor extends Interceptor {
     ('David Kim', 'FA30087679', '2024-11-02'),
     ('Amina Garba', 'FA30087680', '2026-08-30'),
   ];
+
+  /// A sample still birth for list row [id], in the backend's field names
+  /// and the demo's option ids. The first is approved.
+  static Map<String, Object?>? _stillBirth(String id) {
+    final index = (int.tryParse(id) ?? -1) - 30087677;
+    if (index < 0 || index >= 3) return null;
+    final (name, trackingId, date) = _people[index];
+    return {
+      'id': 30087677 + index,
+      'tracking_id': trackingId,
+      // Approval codes: pending 0, approved 1.
+      'approved_status': index == 0 ? 1 : 0,
+      'date_created': date,
+      'birth_place': 1,
+      'deceased_village': 'Amaba',
+      'deceased_date_of_delivery': '2026-09-21',
+      'birth_type': 1,
+      'deceased_sex': 2,
+      'mother_fullname': name,
+      'mother_country': 63,
+      'mother_state_residence': 1,
+      'mother_lga': 11,
+      'mother_settlement': 2,
+      'mother_street_name': 'AMABA 2',
+      'mother_age': 23,
+      'mother_nationality': 63,
+      'mother_state_of_origin': 1,
+      'mother_ethnic_group': 2,
+      'informant_relationship_with_mother': 2,
+      'informant_fullname': name,
+      'informant_country': 63,
+      'informant_state': 1,
+      'informant_lga': 11,
+      'informant_street_name': 'No 2 Agwada street',
+      'informant_settlement': 2,
+      'informant_acknowledgement': 'stillbirth/sign-$index.png',
+    };
+  }
+
+  /// `{result, pagination}`, as `/stillbirth/list/` answers.
+  static Map<String, Object?> _stillBirths(Map<String, dynamic> query) {
+    final search = (query['search'] as String? ?? '').toLowerCase();
+    final rows = [
+      for (final (i, (name, trackingId, date)) in _people.indexed.take(3))
+        if (search.isEmpty || name.toLowerCase().contains(search))
+          {
+            'id': 30087677 + i,
+            'mother_fullname': name,
+            'tracking_id': trackingId,
+            'deceased_date_of_delivery': date,
+            'deceased_sex': 2,
+            'birth_type': 1,
+            'date_created': date,
+            'status': i == 0 ? 'approved' : 'pending',
+          },
+    ];
+    return {
+      'result': rows,
+      'pagination': {'page': 1, 'pages': 1, 'total': rows.length},
+    };
+  }
 
   /// `/birth-attestation/list?type=…`. A row's number encodes its status
   /// and sample person, for [_attestationRecord].

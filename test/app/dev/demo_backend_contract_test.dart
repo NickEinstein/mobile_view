@@ -7,6 +7,10 @@ import 'package:vital_reg_mobile/features/birth_registration/data/birth_registra
 import 'package:vital_reg_mobile/features/birth_registration/domain/applications_source.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
 import 'package:vital_reg_mobile/features/dashboard/data/dashboard_repository_impl.dart';
+import 'package:vital_reg_mobile/features/still_birth/data/still_birth_repository_impl.dart';
+import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_draft.dart';
+import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_form.dart'
+    as still;
 
 import '../../helpers/demo_backend.dart';
 import '../../helpers/fakes.dart';
@@ -58,6 +62,34 @@ void main() {
       repository,
       (id) async => ok(await repository.details(id)),
     );
+  });
+
+  test('still birth', () async {
+    final repository = StillBirthRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+    ok(await repository.referenceData());
+    ok(await repository.count());
+    final items = ok(await repository.registrations());
+    expect(items, isNotEmpty);
+    for (final item in items) {
+      final record = ok(await repository.details(item.id));
+      // `single` doesn't return the id; the one asked for stands.
+      expect(record.summary.id, item.id);
+      final m = record.mother;
+      final data = ok(
+        await repository.referenceData(
+          withLgasOf: stillBirthStates(mother: m, informant: record.informant),
+        ),
+      );
+      expect(
+        data.lgasOf(m[still.MotherField.state]).map((o) => o.id),
+        contains(m[still.MotherField.lga]),
+      );
+    }
+    final first = ok(await repository.details(items.first.id));
+    expect(first.summary.status, ApplicationStatus.approved);
   });
 
   test('dashboard', () async {
