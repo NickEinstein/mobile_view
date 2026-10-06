@@ -26,6 +26,9 @@ import 'package:vital_reg_mobile/features/birth_registration/presentation/detail
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/nin_check/view/nin_check_page.dart';
+import 'package:vital_reg_mobile/features/death_registration/presentation/details/view/death_details_page.dart';
+import 'package:vital_reg_mobile/features/death_registration/presentation/form/view/death_form_page.dart';
+import 'package:vital_reg_mobile/features/death_registration/presentation/home/view/death_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_options.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_record.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_request.dart';
@@ -102,6 +105,8 @@ GoRouter createRouter({
                         _modificationsRoute(rootNavigatorKey)
                       else if (module == AppModule.stillBirthRegistration)
                         _stillBirthRoute(rootNavigatorKey)
+                      else if (module == AppModule.deathRegistration)
+                        _deathRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -249,6 +254,47 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       step(
         AppRoutes.birthAttestationQueriedPattern,
         (context, state) => AttestationFormPage(
+          queriedRecordId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Death Registration: home, the form, Certificate Details and the
+/// correction of a queried record.
+GoRoute _deathRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.deathRegistration;
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => DeathRegistrationHomePage(
+      onOpenForm: () => context.push<void>(AppRoutes.deathForm),
+      onOpenRegistration: (id) => context.push<void>(AppRoutes.deathRecord(id)),
+      onUpdateQueried: (id) => context.push<void>(AppRoutes.deathQueried(id)),
+    ),
+    routes: [
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.deathForm.substring(home.length + 1),
+        builder: (context, state) => DeathFormPage(onExit: () => context.pop()),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.deathRecordPattern.substring(home.length + 1),
+        builder: (context, state) => DeathDetailsPage(
+          id: state.pathParameters['id']!,
+          // The correction replaces the details, so Back returns home.
+          onUpdate: () => context.pushReplacement(
+            AppRoutes.deathQueried(state.pathParameters['id']!),
+          ),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.deathQueriedPattern.substring(home.length + 1),
+        builder: (context, state) => DeathFormPage(
           queriedRecordId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
