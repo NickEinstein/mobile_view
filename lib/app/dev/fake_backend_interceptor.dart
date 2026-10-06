@@ -23,6 +23,11 @@ part 'fake_backend_data.dart';
 ///   answering it always succeeds.
 /// - Still Birth lists sample registrations in the backend's shapes, and
 ///   registering one always succeeds (the signature "uploads" to nowhere).
+/// - Certificate Reissuance lists sample requests in the backend's shapes,
+///   every face matches, and every birth request is accepted (files
+///   "upload" to nowhere; the email code is the payment one). Its form's
+///   places come from `/option/*` (three countries; Nigeria and Ghana have
+///   states).
 /// - Death Registration lists sample records in the backend's shapes, and
 ///   registering one always succeeds. The queried record has the wrong
 ///   documents; correcting it always succeeds.
@@ -233,6 +238,16 @@ class FakeBackendInterceptor extends Interceptor {
               'country_id': 63,
             },
         ]);
+      // Other countries' states (Certificate Reissuance asks per country).
+      case ('GET', _) when path.startsWith('/option/states/'):
+        _ok(handler, options, [
+          if (path.endsWith('/31'))
+            for (final (id, name) in [(901, 'Greater Accra'), (902, 'Ashanti')])
+              {'State_ID': id, 'State_Name': name},
+          if (path.endsWith('/181'))
+            for (final (id, name) in [(951, 'England'), (952, 'Scotland')])
+              {'State_ID': id, 'State_Name': name},
+        ]);
       case ('GET', '/option/country'):
         _ok(handler, options, [
           for (final (code, name, nationality, iso) in [
@@ -336,6 +351,69 @@ class FakeBackendInterceptor extends Interceptor {
           'message': 'Record added successfully',
           'item': {'id': 40999, 'registration_number': number},
           'registrationNumber': number,
+        });
+      // Certificate Reissuance, on the backend's paths.
+      case ('GET', _)
+          when path.startsWith('/certificate-reissuance-assisted/') &&
+              path.endsWith('-stats'):
+        _ok(handler, options, {
+          'Total': _people.length,
+          'Pending': 1,
+          'Approved': 2,
+          'Queried': 1,
+        });
+      case ('GET', _)
+          when path.startsWith('/certificate-reissuance-assisted/') &&
+              path.endsWith('-list'):
+        _ok(handler, options, _reissuances(options.queryParameters));
+      case ('GET', _)
+          when path.startsWith(
+            '/certificate-reissuance-assisted/single-birth-reg/',
+          ):
+        final record = _birthReissuance(
+          path.substring(path.lastIndexOf('/') + 1),
+        );
+        if (record == null) {
+          _fail(handler, options, 404, 'No certificate found');
+        } else {
+          _ok(handler, options, record);
+        }
+      case ('GET', _)
+          when path.startsWith(
+            '/certificate-reissuance-assisted/single-birth-attest/',
+          ):
+        final record = _attestationReissuance(
+          path.substring(path.lastIndexOf('/') + 1),
+        );
+        if (record == null) {
+          _fail(handler, options, 404, 'No certificate found');
+        } else {
+          _ok(handler, options, record);
+        }
+      case ('POST', '/certificate-reissuance-assisted/add-birth-attest'):
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Application submitted successfully.',
+        });
+      case ('PATCH', '/certificate-reissuance-assisted/update-birth-attest'):
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Record updated successfully.',
+        });
+      case ('PATCH', '/certificate-reissuance-assisted/update-birth-reg'):
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Record updated successfully.',
+        });
+      case ('GET', _)
+          when path.startsWith('/birth-registration/selfservice/print/') ||
+              path.startsWith('/self-attestation/print/'):
+        // A tiny PNG stands in for the printed JPEG.
+        _ok(handler, options, _demoCertificatePng);
+      case ('POST', '/certificate-reissuance-assisted/add-birth-reg'):
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Application submitted successfully.',
         });
       // Still Birth, on the backend's paths.
       case ('GET', '/stillbirth/stats'):
@@ -522,6 +600,191 @@ class FakeBackendInterceptor extends Interceptor {
     ('David Kim', 'FA30087679', '2024-11-02'),
     ('Amina Garba', 'FA30087680', '2026-08-30'),
   ];
+
+  /// List row [id] (4100–4103) as `/single-birth-attest` sends it, in the
+  /// API's field names. 4103 is queried, with a reason.
+  static Map<String, Object?>? _attestationReissuance(String id) {
+    final index = (int.tryParse(id) ?? 0) - 4100;
+    if (index < 0 || index >= _people.length) return null;
+    const statuses = [0, 1, 1, 2];
+    final (name, reference, date) = _people[index];
+    final [firstName, surname] = name.split(' ');
+    return {
+      'data': {
+        'id': 4100 + index,
+        'reference': 'BRT$reference',
+        'applicantNin': '12345678901',
+        'approvedStatus': statuses[index],
+        'dateCreated': date,
+        'legacyCertNumber': 'AT60326091$index',
+        'legacyCertIssuedDate': '2012-05-14',
+        'rawLegacyCertLink': 'reissuance/cert-$index.jpg',
+        'rawFace': 'reissuance/face-$index.jpg',
+        'rawSignature': 'reissuance/sign-$index.png',
+        'rawSupportingDocument': [
+          {
+            'type': 'court-affidavit',
+            'file': 'reissuance/affidavit-$index.png',
+            'mimeType': 'image/png',
+          },
+        ],
+        'applicantSurname': surname,
+        'applicantFirstName': firstName,
+        'applicantMiddleName': null,
+        'applicantSex': 1,
+        'applicantDateOfBirth': '1988-04-12',
+        'applicantMaritalStatus': 1,
+        'applicantOriginState': 1,
+        'applicantOriginLga': 11,
+        'applicantTown': 'Isiukwuato',
+        'applicantPhone': '08130845852',
+        'applicantEmail': 'applicant@mail.com',
+        'idType': 2,
+        'idNumber': 'A12345678',
+        'placeOfBirth': 1,
+        'stateOfBirth': 1,
+        'lgaOfBirth': 11,
+        'townOfBirth': 'Isiukwuato',
+        'applicantRegCenter': 110,
+        'applicantRegCenterData': {
+          'Reg_Center_id': 110,
+          'LGAs': {'LGA_ID': 11, 'State_ID': 1},
+        },
+        'currentAddress': 'No 2 Agwada Str',
+        'educationLevel': 7,
+        'occupation': 2,
+        'workAddress': 'Central Market, Umuahia',
+        'requestReason': 3,
+        'requestRequiredFor': 'job in nigeria',
+        'requesterAddress': 'Federal Secretariat, Abuja',
+        'fatherName': '$surname Musa',
+        'fatherState': 1,
+        'fatherLga': 11,
+        'fatherTown': 'Isiukwuato',
+        'motherName': '$surname Amina Bello',
+        'motherState': 1,
+        'motherLga': 11,
+        'motherTown': 'Isiukwuato',
+      },
+      'queried': statuses[index] == 2
+          ? {
+              'title': 'Unclear affidavit',
+              'reason': 'The court affidavit is not readable.',
+            }
+          : null,
+    };
+  }
+
+  /// A tiny PNG, base64, standing in for a printed certificate.
+  static const _demoCertificatePng =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwAD'
+      'hgGAWjR9awAAAABJRU5ErkJggg==';
+
+  /// List row [id] (4100–4103) as `/single-birth-reg` sends it, in the
+  /// API's field names. 4103 is queried, with a reason.
+  static Map<String, Object?>? _birthReissuance(String id) {
+    final index = (int.tryParse(id) ?? 0) - 4100;
+    if (index < 0 || index >= _people.length) return null;
+    const statuses = [0, 1, 1, 2];
+    final (name, reference, date) = _people[index];
+    final [firstName, surname] = name.split(' ');
+    Map<String, Object?> parent(String prefix, String first) => {
+      '${prefix}Surname': surname,
+      '${prefix}FirstName': first,
+      '${prefix}CountryOfResidence': 63,
+      '${prefix}StateOfResidence': 1,
+      '${prefix}LgaOfResidence': 11,
+      '${prefix}ResidenceAddress': 'No 2 Agwada Str',
+      '${prefix}AgeAtBirth': prefix == 'mother' ? 30 : 34,
+      '${prefix}MaritalStatus': 1,
+      '${prefix}Nationality': 63,
+      '${prefix}OriginState': 1,
+      '${prefix}OriginLga': 11,
+      '${prefix}EthnicGroup': 4,
+      '${prefix}LiteracyLevel': 1,
+      '${prefix}EducationLevel': 7,
+      '${prefix}Occupation': 3,
+      '${prefix}PhoneNumber': '08130845852',
+    };
+    return {
+      'data': {
+        'id': 4100 + index,
+        'reference': 'BRT$reference',
+        'nin': '12345678901',
+        'approvedStatus': statuses[index],
+        'dateCreated': date,
+        'legacyCertNumber': 'CR60326091$index',
+        'legacyCertIssuedDate': '2010-03-01',
+        'rawLegacyCertLink': 'reissuance/cert-$index.jpg',
+        'rawChildFace': 'reissuance/face-$index.jpg',
+        'rawSignature': 'reissuance/sign-$index.png',
+        'rawSupportingDocument': [
+          {
+            'type': 'support-document',
+            'file': 'reissuance/doc-$index.png',
+            'mimeType': 'image/png',
+          },
+        ],
+        'childSurname': surname,
+        'childFirstName': firstName,
+        'childMiddleName': null,
+        'childSex': 1,
+        'dateOfBirth': '2016-03-12',
+        'birthType': 1,
+        'birthOrder': 1,
+        'placeOfBirth': 1,
+        'stateOfBirth': 1,
+        'lgaOfBirth': 11,
+        'townOfBirth': 'Isiukwuato',
+        'townOfOrigin': null,
+        'localityOfBirth': 2,
+        'regCenter': 110,
+        'regCenterData': {
+          'Reg_Center_id': 110,
+          'LGAs': {'LGA_ID': 11, 'State_ID': 1},
+        },
+        ...parent('mother', 'Amina'),
+        'motherMaidenName': 'Bello',
+        ...parent('father', 'Musa'),
+      },
+      'queried': statuses[index] == 2
+          ? {
+              'title': 'Age mismatch',
+              'reason':
+                  "The mother's age at birth doesn't match the old "
+                  'certificate.',
+            }
+          : null,
+    };
+  }
+
+  /// Reissuance requests in the backend's list shape: one pending, two
+  /// approved, one queried, filtered by `type` and `search`.
+  static Map<String, Object?> _reissuances(Map<String, Object?> query) {
+    const statuses = [0, 1, 1, 2];
+    const types = ['pending', 'approved', 'approved', 'queried'];
+    final search = '${query['search'] ?? ''}'.toLowerCase();
+    final rows = [
+      for (final (i, (name, reference, date)) in _people.indexed)
+        if ((query['type'] == null || query['type'] == types[i]) &&
+            (search.isEmpty ||
+                name.toLowerCase().contains(search) ||
+                reference.toLowerCase().contains(search)))
+          {
+            'id': 4100 + i,
+            'firstName': name.split(' ').first,
+            'surname': name.split(' ').last,
+            'middleName': null,
+            'reference': 'BRT$reference',
+            'date_created': date,
+            'approvedStatus': statuses[i],
+          },
+    ];
+    return {
+      'result': rows,
+      'pagination': {'page': 1, 'pages': 1},
+    };
+  }
 
   /// A sample still birth for list row [id], in the backend's field names
   /// and the demo's option ids. The first is approved.
