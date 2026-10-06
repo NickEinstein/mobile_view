@@ -23,6 +23,9 @@ part 'fake_backend_data.dart';
 ///   answering it always succeeds.
 /// - Still Birth lists sample registrations in the backend's shapes, and
 ///   registering one always succeeds (the signature "uploads" to nowhere).
+/// - Death Registration lists sample records in the backend's shapes, and
+///   registering one always succeeds. The queried record has the wrong
+///   documents; correcting it always succeeds.
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -302,6 +305,38 @@ class FakeBackendInterceptor extends Interceptor {
           options,
           _modifications(path.split('/')[2], options.queryParameters),
         );
+      // Death Registration, on the backend's paths.
+      // SQL sums arrive as strings.
+      case ('GET', '/death-registration/stats'):
+        _ok(handler, options, {
+          'Pending': '2',
+          'Approved': '3',
+          'Printed': '1',
+          'Queried': '1',
+          'total': '6',
+        });
+      case ('GET', '/death-registration/list/'):
+        _ok(handler, options, _deaths(options.queryParameters));
+      case ('GET', _)
+          when path.startsWith('/death-registration/') &&
+              int.tryParse(path.substring(path.lastIndexOf('/') + 1)) != null:
+        final record = _death(path.substring(path.lastIndexOf('/') + 1));
+        if (record == null) {
+          _fail(handler, options, 404, 'No such death registration.');
+        } else {
+          _ok(handler, options, record);
+        }
+      case ('PATCH', '/death-registration/update'):
+        _ok(handler, options, {'message': 'Record updated'});
+      // As the backend: the new record and its registration number.
+      case ('POST', '/death-registration/add'):
+        final number = 'D${DateTime.now().millisecondsSinceEpoch}N';
+        _ok(handler, options, {
+          'success': true,
+          'message': 'Record added successfully',
+          'item': {'id': 40999, 'registration_number': number},
+          'registrationNumber': number,
+        });
       // Still Birth, on the backend's paths.
       case ('GET', '/stillbirth/stats'):
         _ok(handler, options, 3);
@@ -523,6 +558,123 @@ class FakeBackendInterceptor extends Interceptor {
       'informant_street_name': 'No 2 Agwada street',
       'informant_settlement': 2,
       'informant_acknowledgement': 'stillbirth/sign-$index.png',
+    };
+  }
+
+  /// `GET /death-registration/{id}`: files as URLs plus `raw…` keys, the
+  /// place of death by description only.
+  static Map<String, Object?>? _death(String id) {
+    final number = int.tryParse(id) ?? -1;
+    final statusIndex = (number - 40000) ~/ 100;
+    final row = (number - 40000) % 100;
+    const statuses = ['pending', 'approved', 'printed', 'queried'];
+    if (statusIndex < 0 ||
+        statusIndex >= statuses.length ||
+        row >= _people.length) {
+      return null;
+    }
+    final status = statuses[statusIndex];
+    final (name, trackingId, _) = _people[row];
+    final documents = [
+      ('police-report', 'death/police-$number.jpg'),
+      ('next-of-kin', 'death/kin-$number.jpg'),
+      ('affidavit', 'death/affidavit-$number.jpg'),
+    ];
+    return {
+      'data': {
+        'id': number,
+        'death_certificate_number': 'DC${trackingId.substring(2)}',
+        // Approval codes: pending 0, approved (and printed) 1, queried 2.
+        'approved_status': switch (status) {
+          'pending' => 0,
+          'queried' => 2,
+          _ => 1,
+        },
+        'deceased_date_of_death': '2026-09-22',
+        'deceased_age_at_death': 90,
+        'deceased_cause_of_death': 3,
+        'deceased_certified_by_doctor': 1,
+        'informant_relationship_with_deceased': 3,
+        'deceased_place_of_deathData': {'BirthPlace_Desc': 'At Home'},
+        'informant_signature': 'https://demo.test/files/sign-$number.png',
+        'rawInformantSignature': 'death/sign-$number.png',
+        'SupportingDocument': [
+          for (final (type, key) in documents)
+            {'type': type, 'file': 'https://demo.test/files/$key'},
+        ],
+        'rawSupportingDocument': [
+          for (final (type, key) in documents) {'type': type, 'file': key},
+        ],
+        'deceasedData': {
+          'surname': name.split(' ').last,
+          'firstname': name.split(' ').first,
+          'gender': 2,
+          'current_residence_country': 63,
+          'current_residence_state': 1,
+          'current_residence_lga': 11,
+          'current_address': 'No.3 Owerri street',
+          'birth_settlement_type': 2,
+          'current_literacy_level': 1,
+          'current_education_level': 6,
+          'current_occupation': 100,
+          'current_nationality': 63,
+          'origin_state': 1,
+          'origin_lga': 11,
+          'ethnic_group': 2,
+          'current_marital_status': 1,
+        },
+        'informantData': {
+          'nin': '12342567890',
+          'surname': 'Doe',
+          'firstname': 'John',
+          'current_phone_number': '08045365780',
+          'current_residence_country': 63,
+          'current_residence_state': 1,
+          'current_residence_lga': 11,
+          'current_address': 'No.3 Owerri street',
+          'birth_settlement_type': 2,
+        },
+      },
+      'queried': status == 'queried'
+          ? {'reason': 'Wrong document uploaded'}
+          : null,
+    };
+  }
+
+  /// `{result, pagination}`, as `/death-registration/list/` answers.
+  static Map<String, Object?> _deaths(Map<String, dynamic> query) {
+    final status = query['type'] as String? ?? 'pending';
+    final count = switch (status) {
+      'pending' => 2,
+      'approved' => 3,
+      _ => 1,
+    };
+    final search = (query['search'] as String? ?? '').toLowerCase();
+    final rows = [
+      for (final (i, (name, trackingId, date)) in _people.indexed.take(count))
+        if (search.isEmpty || name.toLowerCase().contains(search))
+          {
+            'id':
+                40000 +
+                100 *
+                    const [
+                      'pending',
+                      'approved',
+                      'printed',
+                      'queried',
+                    ].indexOf(status) +
+                i,
+            'death_certificate_number': 'DC${trackingId.substring(2)}',
+            'deceasedData': {
+              'surname': name.split(' ').last,
+              'firstname': name.split(' ').first,
+            },
+            'date_created': date,
+          },
+    ];
+    return {
+      'result': rows,
+      'pagination': {'page': 1, 'pages': 1, 'total': rows.length},
     };
   }
 
