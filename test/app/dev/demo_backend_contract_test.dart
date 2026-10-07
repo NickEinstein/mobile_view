@@ -15,6 +15,7 @@ import 'package:vital_reg_mobile/features/still_birth/data/still_birth_repositor
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_draft.dart';
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_form.dart'
     as still;
+import 'package:vital_reg_mobile/features/surrogacy_birth/data/surrogacy_birth_repository_impl.dart';
 
 import '../../helpers/demo_backend.dart';
 import '../../helpers/fakes.dart';
@@ -153,6 +154,19 @@ void main() {
     }
     final first = ok(await repository.details(items.first.id));
     expect(first.summary.status, ApplicationStatus.approved);
+  });
+
+  test('surrogacy birth', () async {
+    final repository = SurrogacyBirthRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+    ok(await repository.referenceData());
+    ok(await repository.drafts());
+    await readsEverything(
+      repository,
+      (id) async => ok(await repository.details(id)),
+    );
   });
 
   test('dashboard', () async {
