@@ -26,6 +26,7 @@ import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
 import 'package:vital_reg_mobile/features/payments/payments_module.dart';
 import 'package:vital_reg_mobile/features/payments/presentation/checkout/gateway_checkout.dart';
 import 'package:vital_reg_mobile/features/still_birth/still_birth_module.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/surrogacy_birth_module.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -91,6 +92,7 @@ Future<void> configureDependencies(AppConfig config) async {
   registerBirthAttestationModule(getIt);
   registerModificationsModule(getIt);
   registerStillBirthModule(getIt);
+  registerSurrogacyBirthModule(getIt);
   registerCertificateReissuanceModule(getIt);
   registerDeathRegistrationModule(getIt);
   registerOnboardingModule(getIt);
