@@ -18,6 +18,7 @@ import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/birth_attestation_module.dart';
 import 'package:vital_reg_mobile/features/birth_registration/birth_registration_module.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/certificate_reissuance_module.dart';
 import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/death_registration/death_registration_module.dart';
 import 'package:vital_reg_mobile/features/modifications/modifications_module.dart';
@@ -90,6 +91,7 @@ Future<void> configureDependencies(AppConfig config) async {
   registerBirthAttestationModule(getIt);
   registerModificationsModule(getIt);
   registerStillBirthModule(getIt);
+  registerCertificateReissuanceModule(getIt);
   registerDeathRegistrationModule(getIt);
   registerOnboardingModule(getIt);
 }

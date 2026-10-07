@@ -26,6 +26,15 @@ import 'package:vital_reg_mobile/features/birth_registration/presentation/detail
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/nin_check/view/nin_check_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/domain/entities/reissuance_draft.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/domain/entities/reissuance_summary.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/domain/reissuance_repository.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/attestation_form/view/attestation_reissuance_form_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/birth_form/view/birth_reissuance_form_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/certificate/view/legacy_certificate_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/details/view/reissuance_details_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/home/view/reissuance_home_page.dart';
+import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/validation/view/nin_validation_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/presentation/details/view/death_details_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/presentation/form/view/death_form_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/presentation/home/view/death_registration_home_page.dart';
@@ -105,6 +114,8 @@ GoRouter createRouter({
                         _modificationsRoute(rootNavigatorKey)
                       else if (module == AppModule.stillBirthRegistration)
                         _stillBirthRoute(rootNavigatorKey)
+                      else if (module == AppModule.reissuance)
+                        _reissuanceRoute(rootNavigatorKey)
                       else if (module == AppModule.deathRegistration)
                         _deathRoute(rootNavigatorKey)
                       else
@@ -330,6 +341,114 @@ GoRoute _stillBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         builder: (context, state) =>
             StillBirthDetailsPage(id: state.pathParameters['id']!),
       ),
+    ],
+  );
+}
+
+/// Certificate Reissuance: payment, the
+/// applicant's NIN, face, the old certificate, then the form for its type.
+GoRoute _reissuanceRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.reissuance;
+  GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    builder: builder,
+  );
+  ReissuanceRepository repository() => GetIt.instance<ReissuanceRepository>();
+  ReissuanceKind? kindOf(GoRouterState state) =>
+      ReissuanceKind.values.asNameMap()[state.pathParameters['kind']];
+  String? unknownKind(BuildContext context, GoRouterState state) =>
+      kindOf(state) == null ? home : null;
+  GoRoute kindStep(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    redirect: unknownKind,
+    builder: builder,
+  );
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => ReissuanceHomePage(
+      onStart: () => context.push<void>(AppRoutes.reissuanceNew),
+      onResume: (draft) => context.push<void>(switch (draft.nextStep) {
+        ReissuanceStep.face => AppRoutes.reissuanceFace,
+        ReissuanceStep.certificate => AppRoutes.reissuanceCertificate,
+        ReissuanceStep.form => AppRoutes.reissuanceForm(
+          draft.certificate!.kind.name,
+        ),
+      }),
+      onOpenDetails: (kind, id) =>
+          context.push<void>(AppRoutes.reissuanceRequest(kind.name, id)),
+      onUpdate: (kind, id) =>
+          context.push<void>(AppRoutes.reissuanceUpdate(kind.name, id)),
+    ),
+    // Each step replaces the last, so Back returns to the home.
+    routes: [
+      step(
+        AppRoutes.reissuanceNew,
+        (context, state) => PaymentPage(
+          source: repository().payments,
+          onPaid: () => context.pushReplacement(AppRoutes.reissuanceValidate),
+        ),
+      ),
+      step(
+        AppRoutes.reissuanceValidate,
+        (context, state) => NinValidationPage(
+          onDone: () => context.pushReplacement(AppRoutes.reissuanceFace),
+        ),
+      ),
+      step(
+        AppRoutes.reissuanceFace,
+        (context, state) => FaceValidationPage(
+          source: repository().face,
+          onValidated: () =>
+              context.pushReplacement(AppRoutes.reissuanceCertificate),
+        ),
+      ),
+      step(
+        AppRoutes.reissuanceCertificate,
+        (context, state) => LegacyCertificatePage(
+          onDone: (kind) =>
+              context.pushReplacement(AppRoutes.reissuanceForm(kind.name)),
+        ),
+      ),
+      kindStep(
+        AppRoutes.reissuanceFormPattern,
+        (context, state) => switch (kindOf(state)!) {
+          ReissuanceKind.birth => BirthReissuanceFormPage(
+            onExit: () => context.pop(),
+          ),
+          ReissuanceKind.attestation => AttestationReissuanceFormPage(
+            onExit: () => context.pop(),
+          ),
+        },
+      ),
+      kindStep(AppRoutes.reissuanceRequestPattern, (context, state) {
+        final kind = kindOf(state)!;
+        final id = state.pathParameters['id']!;
+        return ReissuanceDetailsPage(
+          kind: kind,
+          id: id,
+          // The correction replaces the details, so Back returns home.
+          onUpdate: () => context.pushReplacement(
+            AppRoutes.reissuanceUpdate(kind.name, id),
+          ),
+        );
+      }),
+      kindStep(AppRoutes.reissuanceUpdatePattern, (context, state) {
+        final id = state.pathParameters['id'];
+        return switch (kindOf(state)!) {
+          ReissuanceKind.birth => BirthReissuanceFormPage(
+            queriedId: id,
+            onExit: () => context.pop(),
+          ),
+          ReissuanceKind.attestation => AttestationReissuanceFormPage(
+            queriedId: id,
+            onExit: () => context.pop(),
+          ),
+        };
+      }),
     ],
   );
 }

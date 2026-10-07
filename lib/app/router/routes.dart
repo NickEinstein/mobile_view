@@ -67,6 +67,23 @@ abstract final class AppRoutes {
   static String deathQueried(String id) =>
       '$deathRegistration/queried/${Uri.encodeComponent(id)}';
 
+  // Certificate Reissuance (the module path must match AppModule).
+  static const reissuance = '/records/reissuance';
+  static const reissuanceNew = '$reissuance/new';
+  static const reissuanceValidate = '$reissuance/validate';
+  static const reissuanceFace = '$reissuance/face';
+  static const reissuanceCertificate = '$reissuance/certificate';
+  static const reissuanceFormPattern = '$reissuance/form/:kind';
+  static String reissuanceForm(String kind) => '$reissuance/form/$kind';
+  // `:kind` is a ReissuanceKind name.
+  static const reissuanceRequestPattern = '$reissuance/requests/:kind/:id';
+  static String reissuanceRequest(String kind, String id) =>
+      '$reissuance/requests/$kind/${Uri.encodeComponent(id)}';
+  static const reissuanceUpdatePattern =
+      '$reissuance/requests/:kind/:id/update';
+  static String reissuanceUpdate(String kind, String id) =>
+      '$reissuance/requests/$kind/${Uri.encodeComponent(id)}/update';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login, forgotPassword};
 
