@@ -7,6 +7,7 @@ import 'package:vital_reg_mobile/app/app_bloc_observer.dart';
 import 'package:vital_reg_mobile/app/di/injector.dart';
 import 'package:vital_reg_mobile/core/config/app_config.dart';
 import 'package:vital_reg_mobile/core/observability/crash_reporter.dart';
+import 'package:vital_reg_mobile/design_system/icons/app_icons.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_fonts.dart';
 
 /// Entry point for every flavor: config, DI, error hooks, then the app.
@@ -34,6 +35,7 @@ Future<void> bootstrap(Flavor flavor) async {
   };
   Bloc.observer = AppBlocObserver(crashReporter);
   AppFonts.registerLicenses();
+  AppIcons.registerLicenses();
 
   runApp(const App());
 }

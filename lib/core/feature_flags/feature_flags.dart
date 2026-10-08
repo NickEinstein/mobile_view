@@ -2,7 +2,15 @@
 /// never reach users.
 enum Feature {
   birthRegistration,
+  birthAttestation,
+  modifications,
+  stillBirthRegistration,
   deathRegistration,
+  surrogacyBirthRegistration,
+  adoptedChildRegistration,
+  singleParentBirthRegistration,
+  foreignBirthNotification,
+  reissuance,
   approvals,
   reports;
 

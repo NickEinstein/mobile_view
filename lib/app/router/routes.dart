@@ -4,6 +4,10 @@ abstract final class AppRoutes {
   static const login = '/login';
   static const home = '/';
 
+  // Bottom tab pages (home is the first; Services is a sheet).
+  static const applications = '/applications';
+  static const profile = '/profile';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login};
 }
