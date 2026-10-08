@@ -1,0 +1,49 @@
+Icons in this folder come from these open-source sets (via Iconify):
+
+menu.svg — coolicons by Kryston Schwarze (ci:menu-alt-04)
+  https://github.com/krystonschwarze/coolicons
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+home.svg — Fluent UI System Icons by Microsoft Corporation (fluent:home-24-filled)
+  https://github.com/microsoft/fluentui-system-icons
+  Licensed under the MIT License. Copyright (c) 2020 Microsoft Corporation.
+
+services.svg — Google Material Icons by the Material Design Authors (ic:round-space-dashboard)
+  https://github.com/material-icons/material-icons
+  Licensed under the Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+applications.svg — selfh.st/icons by selfh.st (selfhst:docs-collaboration-dark)
+  https://github.com/selfhst/icons
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+profile.svg — Basil by Craftwork (basil:user-solid)
+  https://www.figma.com/community/file/931906394678748246
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+log_out.svg — Ionicons by Ben Sperry / Ionic (ion:log-out)
+  https://github.com/ionic-team/ionicons
+  Licensed under the MIT License. Copyright (c) 2015-present Ionic.
+
+birth_registration.svg, birth_attestation.svg, death_registration.svg,
+still_birth.svg — Hugeicons by Hugeicons (hugeicons:file-02,
+document-validation, add-to-list, file-01)
+  https://hugeicons.com
+  Licensed under the MIT License.
+
+user.svg, document.svg, heart.svg, laurel_wreath.svg, redo.svg — Hugeicons
+(hugeicons:user-02, file-01, heart, laurel-wreath-01, redo)
+  Licensed under the MIT License.
+
+origin_health.svg — Arcticons by Donnnno and contributors (arcticons:origin-health)
+  https://github.com/Arcticons-Team/Arcticons
+  Licensed under CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
+
+child_program.svg — Health Icons by Resolve to Save Lives (healthicons:child-program-outline)
+  https://github.com/resolvetosavelives/healthicons
+  Licensed under the MIT License.
+
+parent.svg — IconMind (iconmind:parent-outline-thin)
+  https://github.com/Iconmind/iconmind
+  Licensed under the MIT License.
+
+The icons are used unmodified except for colour.

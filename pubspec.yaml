@@ -20,6 +20,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_secure_storage: ^9.2.4
+  flutter_svg: ^2.3.0
   formz: ^0.8.0
   get_it: ^8.0.3
   go_router: ^16.0.0
@@ -43,6 +44,7 @@ flutter:
   # NOTE: never list config or .env files as assets. Flutter serves assets
   # publicly, so a bundled .env would ship its API keys to every user.
   assets:
+    - assets/icons/
     - assets/images/auth/
     - assets/images/branding/
     - assets/images/onboarding/
