@@ -2,39 +2,11 @@ import 'package:dio/dio.dart';
 
 part 'fake_backend_data.dart';
 
-/// DEV FLAVOR ONLY. Answers the auth endpoints locally so the app can be
-/// demoed without a backend. Enabled by `USE_FAKE_API=true` in
-/// config/dev.json; `AppConfig` refuses it in staging and prod.
-///
-/// Demo behaviour:
-/// - any email and password (8+ characters) signs in as a registrar;
-/// - password reset always sends a code, and the code is `1234`;
-/// - the dashboard and Birth Registration show sample figures;
-/// - any 11-digit NIN validates except `00000000000`; `11111111111` is a
-///   child born in 2016, so Birth Registration asks for the fee;
-/// - Birth Registration answers in the backend's shapes; only its
-///   places come from `/option/*` (LGAs state by state),
-///   and submitting succeeds when the fields the API requires are there;
-/// - Modifications list sample requests in the backend's shapes, and
-///   find a record for any certificate number except `000000`; sending a
-///   modification always succeeds (documents "upload" to nowhere); the
-///   queried birth request is a date of birth change missing its request
-///   letter (attestation: a misspelled name; death: the age at death), and
-///   answering it always succeeds.
-/// - Still Birth lists sample registrations in the backend's shapes, and
-///   registering one always succeeds (the signature "uploads" to nowhere).
-/// - Certificate Reissuance lists sample requests in the backend's shapes,
-///   every face matches, and every birth request is accepted (files
-///   "upload" to nowhere; the email code is the payment one). Its form's
-///   places come from `/option/*` (three countries; Nigeria and Ghana have
-///   states).
-/// - Death Registration lists sample records in the backend's shapes, and
-///   registering one always succeeds. The queried record has the wrong
-///   documents; correcting it always succeeds.
-/// - Surrogacy Birth lists sample applications in the backend's shapes;
-///   starting one, recording the child's NIN (or a skip), attaching the
-///   payment and saving each section always succeed.
-/// - Adopted Child Registration works the same way as Surrogacy Birth.
+// DEV FLAVOR ONLY (`USE_FAKE_API=true`; refused in staging and prod):
+// answers every endpoint with sample data. Any 8+ character password
+// signs in; the reset code is `1234`; any NIN validates except
+// `00000000000`, and `11111111111` is a 10-year-old.
+
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -544,6 +516,60 @@ class FakeBackendInterceptor extends Interceptor {
       case ('POST' || 'PATCH', _)
           when path.startsWith('/adopted-child-registration/'):
         _ok(handler, options, {'success': true});
+      // Foreign Birth Notification, on the backend's paths.
+      case ('GET', '/birth-notification/stats/self'):
+        _ok(handler, options, {
+          'Pending': '2',
+          'Approved': '3',
+          'Queried': '1',
+          'Downloaded': '1',
+          'total': '6',
+        });
+      case ('GET', '/birth-notification'):
+        _ok(handler, options, _foreignBirths(options.queryParameters));
+      case ('PATCH', '/birth-notification/update'):
+        _ok(handler, options, {'success': true});
+      // As the backend's `singleByCert`: the record bare, without its
+      // status or query reason.
+      case ('GET', _) when path.startsWith('/birth-notification/cert/'):
+        final number = path.substring(path.lastIndexOf('/') + 1);
+        final record = number.length > 5
+            ? _foreignBirthRecord(
+                int.tryParse(number.substring(number.length - 5)),
+              )
+            : null;
+        if (record == null) {
+          _fail(handler, options, 404, 'Record not found');
+        } else {
+          _ok(
+            handler,
+            options,
+            Map<String, Object?>.of(record['data']! as Map<String, Object?>)
+              ..remove('approved_status'),
+          );
+        }
+      case ('GET', _) when path.startsWith('/birth-notification/'):
+        final record = _foreignBirthRecord(
+          int.tryParse(path.substring(path.lastIndexOf('/') + 1)),
+        );
+        if (record == null) {
+          _fail(handler, options, 404, 'Record not found');
+        } else {
+          _ok(handler, options, record);
+        }
+      case ('POST', '/birth-notification/add'):
+        final now = DateTime.now();
+        String two(int n) => '$n'.padLeft(2, '0');
+        _ok(handler, options, {
+          'success': true,
+          'message':
+              'Birth notification submitted and is pending review by a '
+              'registration officer',
+          'notification_number':
+              '${fields['birth_country_code'] ?? 'XX'}'
+              '${two(now.year % 100)}${two(now.month)}${two(now.day)}'
+              '${'${now.millisecondsSinceEpoch}'.substring(8)}',
+        });
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {

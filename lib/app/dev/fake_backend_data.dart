@@ -424,3 +424,130 @@ Map<String, Object?>? _adoptionRecord(String id, {String? referenceId}) {
     },
   };
 }
+
+/// `GET /birth-notification` by `type`. Ids: pending 520+, approved 530+,
+/// queried 540, printed 550.
+Map<String, Object?> _foreignBirths(Map<String, dynamic> query) {
+  final type = query['type'] as String? ?? 'pending';
+  final (code, count, firstId) = switch (type) {
+    'approved' => (1, 3, 530),
+    'queried' => (2, 1, 540),
+    'printed' => (1, 1, 550),
+    _ => (0, 2, 520),
+  };
+  final search = (query['search'] as String? ?? '').toLowerCase();
+  final rows = [
+    for (final (i, (name, _, date))
+        in FakeBackendInterceptor._people.indexed.take(count))
+      if (search.isEmpty || name.toLowerCase().contains(search))
+        {
+          'id': firstId + i,
+          'notification_number': _notificationNumber(firstId + i),
+          'reference': 'BN-${7731 + i}',
+          'approved_status': code,
+          'date_registered': date,
+          'childData': {
+            'firstname': name.split(' ').first,
+            'surname': name.split(' ').last,
+            'middle_name': null,
+            'gender': '${i % 2 + 1}',
+          },
+        },
+  ];
+  return {
+    'result': rows,
+    'pagination': {'page': 1, 'pages': 1, 'total': rows.length},
+  };
+}
+
+/// A demo record's notification number: its id after a fixed prefix.
+String _notificationNumber(int id) => 'GB2610${'$id'.padLeft(5, '0')}';
+
+/// `GET /birth-notification/{id}` for a list id.
+Map<String, Object?>? _foreignBirthRecord(int? id) {
+  if (id == null || id < 520 || id > 552) return null;
+  final status = switch (id) {
+    >= 550 => 1,
+    >= 540 => 2,
+    >= 530 => 1,
+    _ => 0,
+  };
+  final (name, _, date) = FakeBackendInterceptor
+      ._people[id % 10 % FakeBackendInterceptor._people.length];
+  Map<String, Object?> person(int personId, Map<String, Object?> fields) => {
+    'id': personId,
+    'middle_name': null,
+    ...fields,
+  };
+  final mother = person(id * 10 + 2, {
+    'surname': 'Ololade',
+    'firstname': 'Adegoke',
+    'maiden_name': 'Bello',
+    'nin': '90289384945',
+    'current_marital_status': 1,
+    'current_nationality': 63,
+    'origin_state': 25,
+    'origin_lga': 251,
+    'ethnic_group': 7,
+    'current_occupation': 100,
+    'current_residence_country': 63,
+    'current_residence_state': 25,
+    'current_residence_lga': 251,
+    'current_address': 'No 12 Adeleke road, Lekki',
+    'current_literacy_level': 2,
+    'current_phone_number': '08123212820',
+  });
+  return {
+    'data': {
+      'id': id,
+      'notification_number': _notificationNumber(id),
+      'reference': 'BN-${7000 + id}',
+      'email': 'ololade@example.com',
+      'approved_status': status,
+      'date_registered': date,
+      'mother_age_at_birth': 30,
+      'father_age_at_birth': 35,
+      'informant_relationship': 2,
+      'birth_typeData': {'Birth_Type_ID': 1, 'Birth_Type': 'Single'},
+      'birth_orderData': {'Birth_Order_ID': 1, 'Birth_Order': '1'},
+      'birth_placeData': {'BirthPlace_ID': 1, 'BirthPlace_Name': 'Hospital'},
+      'childData': person(id * 10 + 1, {
+        'surname': name.split(' ').last,
+        'firstname': name.split(' ').first,
+        'gender': 2,
+        'birth_date': '2025-12-12',
+        'birth_country': 181,
+        'birth_state': 951,
+        'birth_countryData': {'Alpfa_2_Code': 'GB'},
+      }),
+      'motherData': mother,
+      'fatherData': person(id * 10 + 3, {
+        'surname': 'Keith',
+        'firstname': 'Ryan',
+        'nin': null,
+        'current_marital_status': 1,
+        'current_nationality': 181,
+        'origin_state': 951,
+        'current_residence_country': 181,
+        'current_residence_state': 951,
+        'current_address': '10 Baker Street, London',
+        'current_literacy_level': 2,
+      }),
+      'informantData': null,
+      'informant_consent': 'https://demo.test/files/signature.png',
+      'supporting_document': 'https://demo.test/files/certificate.jpg',
+      'child_face': null,
+      'rawInformantConsent': 'foreign-birth/signature-$id.png',
+      'rawSupportingDocument': 'foreign-birth/certificate-$id.jpg',
+      'rawFace': null,
+    },
+    'queried': status == 2
+        ? {
+            'title': 'Supporting document',
+            'reason':
+                'The foreign birth certificate is unreadable. Upload a '
+                'clearer photo.',
+          }
+        : null,
+  };
+}
