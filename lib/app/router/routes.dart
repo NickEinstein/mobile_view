@@ -56,6 +56,17 @@ abstract final class AppRoutes {
   static String stillBirthRegistration(String id) =>
       '$stillBirth/registrations/${Uri.encodeComponent(id)}';
 
+  // Death Registration (the module path must match AppModule).
+  static const deathRegistration = '/registrations/death';
+  static const deathForm = '$deathRegistration/form';
+
+  static const deathRecordPattern = '$deathRegistration/records/:id';
+  static String deathRecord(String id) =>
+      '$deathRegistration/records/${Uri.encodeComponent(id)}';
+  static const deathQueriedPattern = '$deathRegistration/queried/:id';
+  static String deathQueried(String id) =>
+      '$deathRegistration/queried/${Uri.encodeComponent(id)}';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login, forgotPassword};
 
