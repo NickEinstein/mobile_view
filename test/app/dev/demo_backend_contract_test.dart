@@ -6,7 +6,11 @@ import 'package:vital_reg_mobile/features/birth_attestation/data/face_verifier.d
 import 'package:vital_reg_mobile/features/birth_registration/data/birth_registration_repository_impl.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/applications_source.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reference_data.dart';
 import 'package:vital_reg_mobile/features/dashboard/data/dashboard_repository_impl.dart';
+import 'package:vital_reg_mobile/features/death_registration/data/death_registration_repository_impl.dart';
+import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_draft.dart';
+import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_form.dart';
 import 'package:vital_reg_mobile/features/still_birth/data/still_birth_repository_impl.dart';
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_draft.dart';
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_form.dart'
@@ -62,6 +66,65 @@ void main() {
       repository,
       (id) async => ok(await repository.details(id)),
     );
+  });
+
+  test('death registration', () async {
+    final repository = DeathRegistrationRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+    ok(await repository.referenceData());
+    await readsEverything(repository, (id) async {
+      final record = ok(await repository.details(id));
+      final d = record.deceased;
+      final i = record.informant;
+      // The record's ids are the option lists', so each has a label.
+      final data = ok(
+        await repository.referenceData(
+          withLgasOf: deathStates(deceased: d, informant: i),
+        ),
+      );
+      void known(List<Option> options, String? value, String what) => expect(
+        value == null || options.any((o) => o.id == value),
+        isTrue,
+        reason: '$what "$value" of record $id',
+      );
+      known(data.sexes, d[DeceasedField.sex], 'sex');
+      known(data.placesOfDeath, d[DeceasedField.placeOfDeath], 'place');
+      known(data.settlements, d[DeceasedField.settlement], 'settlement');
+      known(data.occupations, d[DeceasedField.occupation], 'occupation');
+      known(data.maritalStatuses, d[DeceasedField.maritalStatus], 'marital');
+      known(data.literacy, d[DeceasedField.literacy], 'literacy');
+      known(data.educationLevels, d[DeceasedField.educationLevel], 'education');
+      known(data.yesNo, d[DeceasedField.certifiedByDoctor], 'certified');
+      known(data.causesOfDeath, d[DeceasedField.causeOfDeath], 'cause');
+      known(data.ethnicGroups, d[DeceasedField.ethnicGroup], 'ethnic group');
+      known(data.lgasOf(d[DeceasedField.state]), d[DeceasedField.lga], 'LGA');
+      known(data.relationships, i[InformantField.relationship], 'relation');
+      return record;
+    });
+  });
+
+  test("death records decode from the backend's shapes", () async {
+    final repository = DeathRegistrationRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+
+    // Counts arrive as SQL sums, i.e. strings.
+    final counts = ok(await repository.counts());
+    expect(counts.of(ApplicationStatus.approved), 3);
+    final queried = ok(await repository.details('40300'));
+
+    expect(queried.summary.status, ApplicationStatus.queried);
+    expect(queried.queryReason, 'Wrong document uploaded');
+    // Only the description comes back; its id is the option's.
+    expect(queried.deceased[DeceasedField.placeOfDeath], '2');
+    expect(queried.deceased[DeceasedField.nationality], '63');
+    expect(queried.informant[InformantField.relationship], '3');
+    // Keys, not viewing URLs, so a correction can send them back.
+    expect(queried.signatureKey, 'death/sign-40300.png');
+    expect(queried.documentKeys.values, everyElement(startsWith('death/')));
   });
 
   test('still birth', () async {
