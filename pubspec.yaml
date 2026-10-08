@@ -30,6 +30,7 @@ dependencies:
   path_provider: ^2.1.5
   sentry_flutter: ^9.0.0
   shared_preferences: ^2.5.3
+  webview_flutter: ^4.13.1
 
 dev_dependencies:
   bloc_test: ^10.0.0

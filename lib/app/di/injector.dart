@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vital_reg_mobile/app/dev/demo_payment_checkout.dart';
 import 'package:vital_reg_mobile/app/dev/fake_backend_interceptor.dart';
 import 'package:vital_reg_mobile/core/config/app_config.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
@@ -17,6 +18,8 @@ import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
 import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
+import 'package:vital_reg_mobile/features/payments/payments_module.dart';
+import 'package:vital_reg_mobile/features/payments/presentation/checkout/gateway_checkout.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -74,5 +77,11 @@ Future<void> configureDependencies(AppConfig config) async {
   // One line per feature module.
   registerAuthModule(getIt);
   registerDashboardModule(getIt);
+  registerPaymentsModule(
+    getIt,
+    checkout: config.useFakeApi
+        ? const DemoPaymentCheckout()
+        : const GatewayPaymentCheckout(),
+  );
   registerOnboardingModule(getIt);
 }
