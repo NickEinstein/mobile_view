@@ -1,0 +1,5 @@
+# Replace with real GitHub teams/users. Every PR needs an owner's approval.
+*                     @your-org/vital-reg-mobile
+/lib/core/            @your-org/vital-reg-mobile-leads
+/lib/app/router/      @your-org/vital-reg-mobile-leads
+/.github/             @your-org/vital-reg-mobile-leads
