@@ -17,6 +17,15 @@ class FakeBackendInterceptor extends Interceptor {
 
   static const demoCode = '1234';
 
+  /// The payment code the demo accepts.
+  static const demoPaymentOtp = '123456';
+
+  /// A reference the demo treats as already paid ("Enter Reference").
+  static const demoPaidReference = 'PAIDDEMO';
+
+  /// References "paid" through `DemoPaymentCheckout`, for this app run.
+  static final Set<String> paidReferences = {};
+
   @override
   Future<void> onRequest(
     RequestOptions options,
@@ -57,6 +66,57 @@ class FakeBackendInterceptor extends Interceptor {
         }
       case ('POST', '/auth/password/reset'):
         _ok(handler, options, null);
+      case ('GET', _) when path.startsWith('/payments/price/'):
+        _ok(handler, options, {'amount': 2100, 'currency': 'NGN'});
+      case ('GET', _) when path.startsWith('/can-receive-email/'):
+        _ok(handler, options, {'valid': !path.contains('invalid')});
+      case ('POST', '/validation/send-otp' || '/validation/resend-otp'):
+        _ok(handler, options, null);
+      case ('POST', '/validation/validate-otp'):
+        if (fields['otp'] == demoPaymentOtp) {
+          _ok(handler, options, null);
+        } else {
+          _fail(handler, options, 422, 'The code is incorrect or expired.');
+        }
+      case ('POST', '/payments/initiate'):
+        final reference =
+            'BRT${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}'
+                .toUpperCase();
+        // The backend currently starts every payment with ALATPay.
+        _ok(handler, options, {
+          'gateway': 'alatpay',
+          'success': true,
+          'reference': reference,
+          'url': 'https://demo.test/checkout/$reference',
+        });
+      // As the backend: only a completed, unused payment is found.
+      case ('GET', '/payments/verify'):
+        final reference = options.queryParameters['reference'];
+        if (paidReferences.contains(reference) ||
+            reference == demoPaidReference) {
+          _ok(handler, options, {
+            'success': true,
+            'status': 'completed',
+            'reference': reference,
+          });
+        } else {
+          _fail(
+            handler,
+            options,
+            404,
+            'Payment reference not found or has been used',
+          );
+        }
+      // ALATPay's check after its checkout: asks the gateway, so a payment
+      // still in progress is pending.
+      case ('POST', '/payments/alat/verify'):
+        final reference = fields['reference'];
+        final paid = paidReferences.contains(reference);
+        _ok(handler, options, {
+          'success': paid,
+          'status': paid ? 'completed' : 'pending',
+          'reference': reference,
+        });
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {
