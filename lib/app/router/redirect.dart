@@ -19,10 +19,14 @@ String? resolveRedirect({
           : _withReturnPath(AppRoutes.splash, location);
 
     case AuthUnauthenticated():
-      final target = onboardingCompleted
-          ? AppRoutes.login
-          : AppRoutes.onboarding;
-      return path == target ? null : _withReturnPath(target, location);
+      if (!onboardingCompleted) {
+        return path == AppRoutes.onboarding
+            ? null
+            : _withReturnPath(AppRoutes.onboarding, location);
+      }
+      return AppRoutes.signedOutRoutes.contains(path)
+          ? null
+          : _withReturnPath(AppRoutes.login, location);
 
     case AuthAuthenticated(:final user):
       if (isPublic) {

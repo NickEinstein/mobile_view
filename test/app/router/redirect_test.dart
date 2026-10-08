@@ -121,4 +121,30 @@ void main() {
       expect(_redirect(_signedIn, '/', onboarded: false), isNull);
     });
   });
+
+  group('forgot password', () {
+    test('is open to signed-out users', () {
+      expect(
+        _redirect(const AuthUnauthenticated(), '/forgot-password'),
+        isNull,
+      );
+    });
+
+    test('waits for onboarding on first launch', () {
+      expect(
+        Uri.parse(
+          _redirect(
+            const AuthUnauthenticated(),
+            '/forgot-password',
+            onboarded: false,
+          )!,
+        ).path,
+        '/onboarding',
+      );
+    });
+
+    test('sends signed-in users home', () {
+      expect(_redirect(_signedIn, '/forgot-password'), '/');
+    });
+  });
 }
