@@ -15,6 +15,7 @@ import 'package:vital_reg_mobile/core/session/token_storage.dart';
 import 'package:vital_reg_mobile/core/session/user_scope.dart';
 import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
+import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
 
 final GetIt getIt = GetIt.instance;
@@ -72,5 +73,6 @@ Future<void> configureDependencies(AppConfig config) async {
 
   // One line per feature module.
   registerAuthModule(getIt);
+  registerDashboardModule(getIt);
   registerOnboardingModule(getIt);
 }

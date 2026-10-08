@@ -89,6 +89,9 @@
   "greetingMorning": "Good morning",
   "greetingAfternoon": "Good afternoon",
   "greetingEvening": "Good evening",
+  "roleRegistrar": "Registrar",
+  "roleSupervisor": "Supervisor",
+  "roleAuditor": "Auditor",
   "homeGreeting": "Welcome, {name}",
   "@homeGreeting": {
     "placeholders": {
