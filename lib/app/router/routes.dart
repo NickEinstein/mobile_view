@@ -86,6 +86,17 @@ abstract final class AppRoutes {
   static String adoptedChildQueried(String id) =>
       '$adoptedChild/queried/${Uri.encodeComponent(id)}';
 
+  // Foreign Birth Notification (the module path must match AppModule).
+  static const foreignBirth = '/registrations/foreign-birth';
+  static const foreignBirthPayment = '$foreignBirth/payment';
+  static const foreignBirthForm = '$foreignBirth/form';
+  static const foreignBirthApplicationPattern =
+      '$foreignBirth/applications/:id';
+  static String foreignBirthApplication(String id) =>
+      '$foreignBirth/applications/${Uri.encodeComponent(id)}';
+  static const foreignBirthQueriedPattern = '$foreignBirth/queried/:id';
+  static String foreignBirthQueried(String id) =>
+      '$foreignBirth/queried/${Uri.encodeComponent(id)}';
   static const deathRecordPattern = '$deathRegistration/records/:id';
   static String deathRecord(String id) =>
       '$deathRegistration/records/${Uri.encodeComponent(id)}';

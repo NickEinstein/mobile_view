@@ -45,6 +45,11 @@ import 'package:vital_reg_mobile/features/certificate_reissuance/presentation/va
 import 'package:vital_reg_mobile/features/death_registration/presentation/details/view/death_details_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/presentation/form/view/death_form_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/presentation/home/view/death_registration_home_page.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/domain/entities/foreign_birth_draft.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/domain/foreign_birth_repository.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/presentation/details/view/foreign_birth_details_page.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/presentation/form/view/foreign_birth_form_page.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/presentation/home/view/foreign_birth_home_page.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_options.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_record.dart';
 import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_request.dart';
@@ -136,6 +141,8 @@ GoRouter createRouter({
                         _surrogacyBirthRoute(rootNavigatorKey)
                       else if (module == AppModule.adoptedChildRegistration)
                         _adoptedChildRoute(rootNavigatorKey)
+                      else if (module == AppModule.foreignBirthNotification)
+                        _foreignBirthRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -424,6 +431,62 @@ GoRoute _adoptedChildRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       step(
         AppRoutes.adoptedChildQueriedPattern,
         (context, state) => AdoptionFormPage(
+          queriedId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Foreign Birth Notification: the payment, then the form, submitted in
+/// one go.
+GoRoute _foreignBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.foreignBirth;
+  GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    builder: builder,
+  );
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => ForeignBirthHomePage(
+      onStart: () => context.push<void>(AppRoutes.foreignBirthPayment),
+      onResumeAt: (stage) => context.push<void>(switch (stage) {
+        ForeignBirthStage.payment => AppRoutes.foreignBirthPayment,
+        ForeignBirthStage.form => AppRoutes.foreignBirthForm,
+      }),
+      onOpenApplication: (id) =>
+          context.push<void>(AppRoutes.foreignBirthApplication(id)),
+    ),
+    // Each step replaces the last, so Back returns to the home.
+    routes: [
+      step(
+        AppRoutes.foreignBirthPayment,
+        (context, state) => PaymentPage(
+          source: GetIt.instance<ForeignBirthRepository>().payments,
+          onPaid: () => context.pushReplacement(AppRoutes.foreignBirthForm),
+        ),
+      ),
+      step(
+        AppRoutes.foreignBirthForm,
+        (context, state) => ForeignBirthFormPage(onExit: () => context.pop()),
+      ),
+      step(
+        AppRoutes.foreignBirthApplicationPattern,
+        (context, state) => ForeignBirthDetailsPage(
+          id: state.pathParameters['id']!,
+          // The correction replaces the details, so Back returns home.
+          onRespondToQuery: () => context.pushReplacement(
+            AppRoutes.foreignBirthQueried(state.pathParameters['id']!),
+          ),
+        ),
+      ),
+      step(
+        AppRoutes.foreignBirthQueriedPattern,
+        (context, state) => ForeignBirthFormPage(
           queriedId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
