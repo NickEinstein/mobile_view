@@ -17,6 +17,18 @@ final class Email extends FormzInput<String, EmailError> {
     if (!_pattern.hasMatch(email)) return EmailError.invalid;
     return null;
   }
+
+  /// Partly hidden for display: `michealjames@mail.com` becomes
+  /// `mic*********@mail.com`.
+  String get masked {
+    final email = value.trim();
+    final at = email.indexOf('@');
+    if (at <= 1) return email;
+    final local = email.substring(0, at);
+    final visible = local.length > 3 ? 3 : 1;
+    final hidden = '*' * (local.length - visible);
+    return '${local.substring(0, visible)}$hidden${email.substring(at)}';
+  }
 }
 
 enum OtpCodeError { incomplete }
@@ -48,4 +60,34 @@ final class Password extends FormzInput<String, PasswordError> {
     if (value.length < minLength) return PasswordError.tooShort;
     return null;
   }
+}
+
+enum ConfirmedPasswordError { empty, mismatch }
+
+/// "Confirm password": valid when it matches [original].
+final class ConfirmedPassword
+    extends FormzInput<String, ConfirmedPasswordError> {
+  const ConfirmedPassword.pure({this.original = ''}) : super.pure('');
+  const ConfirmedPassword.dirty({required this.original, String value = ''})
+    : super.dirty(value);
+
+  final String original;
+
+  @override
+  ConfirmedPasswordError? validator(String value) {
+    if (value.isEmpty) return ConfirmedPasswordError.empty;
+    if (value != original) return ConfirmedPasswordError.mismatch;
+    return null;
+  }
+
+  // FormzInput equality ignores [original]; include it so state updates
+  // when only the new password changes.
+  @override
+  bool operator ==(Object other) =>
+      other is ConfirmedPassword &&
+      other.original == original &&
+      super == other;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, original);
 }

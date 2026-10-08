@@ -41,7 +41,8 @@ GoRouter createRouter({
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        // The reset screens get their route in the next commit.
+        builder: (context, state) => LoginPage(onForgotPassword: () {}),
       ),
       // Signed-in area: tab pages, each with its own history. (Services is
       // a sheet, not a page; see AppShell.)

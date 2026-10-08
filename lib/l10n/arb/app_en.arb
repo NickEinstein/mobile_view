@@ -39,7 +39,42 @@
   "hidePassword": "Hide password",
   "forgotPasswordPrompt": "Forgot Password?",
   "forgotPasswordAction": "Click here",
-  "forgotPasswordUnavailable": "Password reset isn't available in the app yet.",
+  "forgotPasswordTitle": "Forgot Password",
+  "forgotPasswordTitleHighlight": "Password",
+  "@forgotPasswordTitleHighlight": {
+    "description": "The part of forgotPasswordTitle shown in green. Must appear in forgotPasswordTitle exactly."
+  },
+  "forgotPasswordSubtitle": "Kindly provide your email to reset your password",
+  "sendCode": "Send",
+  "back": "Back",
+  "verifyEmailTitle": "Email Verification",
+  "verifyEmailMessage": "Input the code that was sent to {email}",
+  "@verifyEmailMessage": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "codeFieldLabel": "Verification code",
+  "resendPrompt": "Didn't get a code?",
+  "resendAction": "Resend OTP",
+  "resendCountdown": "Resend in {seconds}s",
+  "@resendCountdown": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "verify": "Verify",
+  "verifiedTitle": "Verification Successful",
+  "verifiedMessage": "Your email has been verified successfully. You can proceed to create your new password.",
+  "proceed": "Proceed",
+  "newPasswordTitle": "Set a new password",
+  "newPasswordSubtitle": "Your new password must be different from your previous password",
+  "newPasswordLabel": "New Password",
+  "confirmPasswordLabel": "Confirm Password",
+  "passwordMismatch": "Passwords don't match.",
+  "resetPasswordButton": "Reset password",
+  "resetDoneTitle": "Password Reset Successful",
+  "resetDoneMessage": "Your password has been reset successfully. You can proceed to login.",
   "passwordRequired": "Enter your password.",
   "passwordTooShort": "Password must be at least {min} characters.",
   "@passwordTooShort": {
