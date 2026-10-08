@@ -1,5 +1,6 @@
 {
   "API_BASE_URL": "https://api.staging.vitalreg.example/v1",
+  "FACE_VERIFICATION_URL": "https://face-sdk.verxid.site/api/v1/matchWithSelfie",
   "SESSION_TIMEOUT_MINUTES": "15",
   "SENTRY_DSN": "",
   "FEATURES": "birthRegistration,deathRegistration,approvals",

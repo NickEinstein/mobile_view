@@ -1,5 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vital_reg_mobile/app/dev/fake_backend_interceptor.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/data/birth_attestation_repository_impl.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/data/face_verifier.dart';
 import 'package:vital_reg_mobile/features/birth_registration/data/birth_registration_repository_impl.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/applications_source.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
@@ -36,6 +39,21 @@ void main() {
       storage: signedInUserStorage(),
     );
     ok(await repository.referenceData());
+    await readsEverything(
+      repository,
+      (id) async => ok(await repository.details(id)),
+    );
+  });
+
+  test('birth attestation', () async {
+    final client = demoBackend().client;
+    final repository = BirthAttestationRepositoryImpl(
+      client: client,
+      storage: signedInUserStorage(),
+      faces: FaceVerifier(client: client, url: demoFaceUrl),
+    );
+    ok(await repository.referenceData());
+    ok(await repository.payments.quote());
     await readsEverything(
       repository,
       (id) async => ok(await repository.details(id)),
