@@ -34,6 +34,7 @@ part 'fake_backend_data.dart';
 /// - Surrogacy Birth lists sample applications in the backend's shapes;
 ///   starting one, recording the child's NIN (or a skip), attaching the
 ///   payment and saving each section always succeed.
+/// - Adopted Child Registration works the same way as Surrogacy Birth.
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -493,6 +494,56 @@ class FakeBackendInterceptor extends Interceptor {
             'data': {...record}..remove('id'),
           });
         }
+      // Adopted Child Registration, on the backend's paths.
+      // As the backend's typed-in reference check.
+      case ('GET', '/adopted-child-registration/payment'):
+        final reference = options.queryParameters['reference'];
+        _ok(handler, options, {
+          'valid':
+              paidReferences.contains(reference) ||
+              reference == demoPaidReference,
+          'reference': reference,
+        });
+      case ('GET', '/adopted-child-registration/stats'):
+        _ok(handler, options, {
+          'Pending': 3,
+          'Approved': 2,
+          'Queried': 1,
+          'Printed': 2,
+        });
+      case ('GET', '/adopted-child-registration'):
+        _ok(handler, options, _adoptions(options.queryParameters));
+      case ('POST', '/adopted-child-registration/initiate'):
+        final serial = DateTime.now().millisecondsSinceEpoch % 10000000;
+        _ok(handler, options, {
+          'success': true,
+          'referenceId':
+              'ACR-${DateTime.now().year}-${'$serial'.padLeft(7, '0')}',
+        });
+      case ('GET', _)
+          when path.startsWith('/adopted-child-registration/') &&
+              path.endsWith('/resume'):
+        final reference = path.split('/')[2];
+        _ok(handler, options, {
+          'success': true,
+          'lastCompletedSection': 2,
+          'data': _adoptionRecord('adoption-drafted-0', referenceId: reference),
+        });
+      case ('GET', _) when path.startsWith('/adopted-child-registration/'):
+        final record = _adoptionRecord(
+          path.substring(path.lastIndexOf('/') + 1),
+        );
+        if (record == null) {
+          _fail(handler, options, 404, 'No such application.');
+        } else {
+          // As the backend's `single`: without the record's id.
+          _ok(handler, options, {
+            'data': {...record}..remove('id'),
+          });
+        }
+      case ('POST' || 'PATCH', _)
+          when path.startsWith('/adopted-child-registration/'):
+        _ok(handler, options, {'success': true});
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {

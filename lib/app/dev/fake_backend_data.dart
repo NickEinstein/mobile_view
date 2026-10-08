@@ -202,6 +202,38 @@ Map<String, Object?> _surrogacyRegistrations(Map<String, dynamic> query) {
   };
 }
 
+/// `{result, pagination}`, the adoption list's shape, filtered by
+/// `status` ("pending", "approved", …).
+Map<String, Object?> _adoptions(Map<String, dynamic> query) {
+  final status = query['status'] as String? ?? 'pending';
+  final (code, count) = switch (status) {
+    'approved' => (1, 2),
+    'queried' => (2, 1),
+    'printed' => (1, 2),
+    'drafted' => (3, 1),
+    _ => (0, 3),
+  };
+  final search = (query['search'] as String? ?? '').toLowerCase();
+  final rows = [
+    for (final (i, (name, _, date))
+        in FakeBackendInterceptor._people.indexed.take(count))
+      if (search.isEmpty || name.toLowerCase().contains(search))
+        {
+          'id': 'adoption-$status-$i',
+          'referenceId': 'ACR-2026-000${3150 + i}',
+          'status': code,
+          'childSurname': name.split(' ').last,
+          'childFirstName': name.split(' ').first,
+          'childSex': '${i % 2 + 1}',
+          'createdAt': date,
+        },
+  ];
+  return {
+    'result': rows,
+    'pagination': {'page': 1, 'pages': 1, 'total': rows.length},
+  };
+}
+
 /// A surrogacy application for list id `surrogacy-<status>-<index>` (or a
 /// resumed draft's reference id).
 Map<String, Object?>? _surrogacyRecord(String id) {
@@ -304,6 +336,90 @@ Map<String, Object?>? _surrogacyRecord(String id) {
             'file': 'surrogacy/$type.jpg',
             'mimeType': 'image/jpeg',
           },
+      ],
+    },
+  };
+}
+
+/// An adoption record for list item [id] (`adoption-<status>-<i>`).
+Map<String, Object?>? _adoptionRecord(String id, {String? referenceId}) {
+  final parts = id.split('-');
+  final index = parts.length == 3 ? int.tryParse(parts[2]) : null;
+  if (parts.first != 'adoption' ||
+      index == null ||
+      index >= FakeBackendInterceptor._people.length) {
+    return null;
+  }
+  final status = parts[1];
+  final (name, _, date) = FakeBackendInterceptor._people[index];
+  final [firstName, surname] = name.split(' ');
+  final drafted = status == 'drafted';
+  return {
+    'id': id,
+    'referenceId': referenceId ?? 'ACR-2026-000${3150 + index}',
+    'status': switch (status) {
+      'approved' || 'printed' => 1,
+      'queried' => 2,
+      'drafted' => 3,
+      _ => 0,
+    },
+    'createdAt': date,
+    if (status == 'approved' || status == 'printed')
+      'certificateNo': 'ACR/LA/2026/00${index + 41}',
+    if (status == 'queried')
+      'remarks': "The child's date of birth does not match the court order.",
+    'paymentReference': 'PAIDDEMO',
+    'childNinVerified': false,
+    'childSurname': surname,
+    'childFirstName': firstName,
+    'dateOfBirth': '2015-09-09',
+    'childSex': 1,
+    'placeOfBirth': 1,
+    'birthOrder': 1,
+    'birthState': 25,
+    'birthLga': 501,
+    'regState': 25,
+    'regLga': 501,
+    'regCenter': 5011,
+    'localityType': 2,
+    'ad1FullName': 'Ololade Semiola',
+    'ad1Nin': '72921010909',
+    'ad1MaritalStatus': 1,
+    'ad1Nationality': 63,
+    'ad1Address': 'No 12 Adeleke road, Lekki',
+    'ad1Occupation': 100,
+    'ad1ResidenceCountry': 63,
+    'ad1ResidenceState': 25,
+    'ad1ResidenceLga': 501,
+    'ad1LocalityType': 2,
+    'ad1LiteracyLevel': 1,
+    'ad1EducationLevel': 7,
+    'ad1Phone': '09012348349',
+    'ad2Present': false,
+    if (!drafted) ...{
+      'courtName': 'Federal High Court',
+      'orderReferenceNo': 'FCT/HC/CV/1889/2026',
+      'adoptionOrderDate': '2025-09-09',
+      'adoptionType': 'domestic',
+      'infSurname': 'Keith',
+      'infFirstName': 'Ryan',
+      'infSameResidenceAsAdopter1': true,
+      'infCountry': 63,
+      'infResidenceState': 25,
+      'infResidenceLga': 501,
+      'infResidenceAddress': 'No 12 Adeleke road, Lekki',
+      'infNationality': 63,
+      'infRelationshipToChild': 13,
+      'infPhone': '08123123123',
+      'infConsentType': 'signature_pad',
+      'infSignature': 'demo/signature.png',
+      'supportingDocument': [
+        for (final type in [
+          'court_adoption_order',
+          'adoption_certificate',
+          'adoptive_mother_identity_document',
+        ])
+          {'type': type, 'file': 'demo/$type.jpg', 'mimeType': 'image/jpeg'},
       ],
     },
   };
