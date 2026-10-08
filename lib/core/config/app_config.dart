@@ -12,6 +12,7 @@ final class AppConfig {
     required this.sessionTimeout,
     required this.enabledFeatures,
     this.sentryDsn = '',
+    this.deviceIdOverride,
   });
 
   factory AppConfig.fromEnvironment(Flavor flavor) {
@@ -22,12 +23,16 @@ final class AppConfig {
     );
     const sentryDsn = String.fromEnvironment('SENTRY_DSN');
     const features = String.fromEnvironment('FEATURES');
+    const deviceId = String.fromEnvironment('DEVICE_ID');
 
     if (apiBaseUrl.isEmpty) {
       throw StateError(
         'API_BASE_URL is not set. Run with '
         '--dart-define-from-file=config/${flavor.name}.json',
       );
+    }
+    if (deviceId.isNotEmpty && flavor == Flavor.prod) {
+      throw StateError('DEVICE_ID is not allowed in the prod flavor.');
     }
     if (flavor != Flavor.dev && !apiBaseUrl.startsWith('https://')) {
       throw StateError('Non-dev builds must use an https:// API_BASE_URL.');
@@ -39,6 +44,7 @@ final class AppConfig {
       sessionTimeout: const Duration(minutes: timeoutMinutes),
       enabledFeatures: Feature.parseList(features),
       sentryDsn: sentryDsn,
+      deviceIdOverride: deviceId.isEmpty ? null : deviceId,
     );
   }
 
@@ -47,4 +53,8 @@ final class AppConfig {
   final Duration sessionTimeout;
   final Set<Feature> enabledFeatures;
   final String sentryDsn;
+
+  /// Dev and staging only: a fixed device id, so testers can reuse the one
+  /// their account is bound to. Keep it in the git-ignored config file.
+  final String? deviceIdOverride;
 }

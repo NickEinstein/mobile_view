@@ -15,6 +15,9 @@ class _FakeAdapter implements HttpClientAdapter {
   String validToken;
   final List<RequestOptions> requests = [];
 
+  /// Runs while the request is in flight.
+  Future<void> Function()? whileSending;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -22,6 +25,7 @@ class _FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    await whileSending?.call();
     final authorized = options.headers['Authorization'] == 'Bearer $validToken';
     return ResponseBody.fromString(
       authorized ? '{"ok":true}' : '{"message":"token expired"}',
@@ -40,33 +44,18 @@ void main() {
   late InMemoryTokenStorage storage;
   late _FakeAdapter adapter;
   late Dio dio;
-  late int refreshCalls;
   late int sessionExpiredCalls;
-  late AuthTokens? refreshResult;
 
   setUp(() {
-    storage = InMemoryTokenStorage(
-      const AuthTokens(accessToken: 'old', refreshToken: 'refresh-1'),
-    );
-    adapter = _FakeAdapter('new');
-    refreshCalls = 0;
+    storage = InMemoryTokenStorage(const AuthTokens(accessToken: 'valid'));
+    adapter = _FakeAdapter('valid');
     sessionExpiredCalls = 0;
-    refreshResult = const AuthTokens(
-      accessToken: 'new',
-      refreshToken: 'refresh-2',
-    );
 
     dio = Dio(BaseOptions(baseUrl: 'https://api.test'))
       ..httpClientAdapter = adapter;
     dio.interceptors.add(
       AuthInterceptor(
-        dio: dio,
         tokenStorage: storage,
-        refresh: (refreshToken) async {
-          refreshCalls++;
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          return refreshResult;
-        },
         onSessionExpired: () async {
           sessionExpiredCalls++;
         },
@@ -75,36 +64,40 @@ void main() {
   });
 
   test('attaches the stored access token', () async {
-    adapter.validToken = 'old';
-
-    final response = await dio.get<Object?>('/me');
+    final response = await dio.get<Object?>('/records');
 
     expect(response.statusCode, 200);
-    expect(adapter.requests.single.headers['Authorization'], 'Bearer old');
-    expect(refreshCalls, 0);
-  });
-
-  test('parallel 401s trigger ONE refresh and every request retries', () async {
-    final responses = await Future.wait([
-      dio.get<Object?>('/a'),
-      dio.get<Object?>('/b'),
-      dio.get<Object?>('/c'),
-    ]);
-
-    expect(responses.map((r) => r.statusCode), everyElement(200));
-    expect(refreshCalls, 1);
-    expect((await storage.read())?.accessToken, 'new');
+    expect(adapter.requests.single.headers['Authorization'], 'Bearer valid');
     expect(sessionExpiredCalls, 0);
   });
 
-  test('ends the session when the refresh is rejected', () async {
-    refreshResult = null;
+  test('a rejected token ends the session, with no retry', () async {
+    adapter.validToken = 'something-else';
 
-    await expectLater(dio.get<Object?>('/a'), throwsA(isA<DioException>()));
+    await expectLater(
+      dio.get<Object?>('/records'),
+      throwsA(isA<DioException>()),
+    );
+
     expect(sessionExpiredCalls, 1);
+    expect(adapter.requests, hasLength(1));
   });
 
-  test('public requests carry no token and never refresh', () async {
+  test('a late 401 for a replaced token leaves the new session', () async {
+    adapter
+      ..validToken = 'something-else'
+      // The user signs in again before the old request's answer arrives.
+      ..whileSending = () =>
+          storage.write(const AuthTokens(accessToken: 'newer'));
+
+    await expectLater(
+      dio.get<Object?>('/records'),
+      throwsA(isA<DioException>()),
+    );
+    expect(sessionExpiredCalls, 0);
+  });
+
+  test('a 401 on a public request is an answer, not an expiry', () async {
     await expectLater(
       dio.get<Object?>(
         '/public',
@@ -117,6 +110,6 @@ void main() {
       adapter.requests.single.headers.containsKey('Authorization'),
       isFalse,
     );
-    expect(refreshCalls, 0);
+    expect(sessionExpiredCalls, 0);
   });
 }

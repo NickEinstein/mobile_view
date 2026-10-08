@@ -8,8 +8,11 @@ import 'package:vital_reg_mobile/core/network/dio_factory.dart';
 import 'package:vital_reg_mobile/core/observability/app_logger.dart';
 import 'package:vital_reg_mobile/core/observability/crash_reporter.dart';
 import 'package:vital_reg_mobile/core/observability/sentry_crash_reporter.dart';
+import 'package:vital_reg_mobile/core/session/device_id.dart';
 import 'package:vital_reg_mobile/core/session/session_manager.dart';
 import 'package:vital_reg_mobile/core/session/token_storage.dart';
+import 'package:vital_reg_mobile/core/session/user_scope.dart';
+import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
 import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
 
@@ -49,6 +52,12 @@ Future<void> configureDependencies(AppConfig config) async {
       StaticFeatureFlags(config.enabledFeatures),
     )
     ..registerSingleton<FlutterSecureStorage>(secureStorage)
+    // Drafts and payment references, per user (registrars share devices).
+    ..registerSingleton<UserStorage>(UserStorage(secureStorage, UserScope()))
+    // Never cleared: the backend allows each account one device.
+    ..registerSingleton<DeviceId>(
+      DeviceId(secureStorage, override: config.deviceIdOverride),
+    )
     ..registerSingleton<SharedPreferences>(preferences)
     ..registerSingleton<TokenStorage>(tokenStorage)
     ..registerSingleton<SessionManager>(

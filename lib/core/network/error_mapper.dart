@@ -19,7 +19,9 @@ Failure _fromResponse(Response<Object?>? response) {
   final data = response?.data;
   final message = extractMessage(data);
   return switch (response?.statusCode) {
-    400 || 422 => ValidationFailure(
+    // The backend rejects business rules (wrong password, a second device,
+    // a record in the wrong state) with 406 and a message for the user.
+    400 || 406 || 422 => ValidationFailure(
       message: message,
       fieldErrors: extractFieldErrors(data),
     ),

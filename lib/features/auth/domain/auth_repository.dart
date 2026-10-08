@@ -11,7 +11,8 @@ abstract interface class AuthRepository {
     required Password password,
   });
 
-  /// Falls back to the last known profile when offline.
+  /// The signed-in user, from the sign-in response (the backend has no
+  /// endpoint for it). Fails when there is none, and the session ends.
   Future<Result<User>> currentUser();
 
   Future<void> signOut({required SessionEndReason reason});

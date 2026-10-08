@@ -8,13 +8,8 @@ enum SessionStatus { unknown, authenticated, unauthenticated }
 
 enum SessionEndReason { userInitiated, expired, inactivity, invalid }
 
-/// Single source of truth for "is there a valid session?".
-///
-/// The network layer (token refresh failure) and repositories (sign in/out)
-/// write to it. `AuthBloc` listens, and the router redirects from
-/// `AuthBloc`. No screen navigates on login/logout by itself.
-/// (A 401 signal sent to a listener that was never mounted would leave
-/// expired sessions signed in.)
+/// Single source of truth for the session. `AuthBloc` listens and the
+/// router redirects from it; screens never navigate on login/logout.
 class SessionManager {
   SessionManager(this._tokenStorage);
 
@@ -40,7 +35,7 @@ class SessionManager {
       _set(SessionStatus.unauthenticated);
       return;
     }
-    if (Jwt.isExpired(tokens.refreshToken)) {
+    if (Jwt.isExpired(tokens.accessToken)) {
       await end(reason: SessionEndReason.expired);
       return;
     }
