@@ -68,42 +68,56 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   @override
   Widget build(BuildContext context) {
+    final isFirstPage = context.select(
+      (OnboardingCubit cubit) => cubit.state.page == 0,
+    );
     return BlocListener<OnboardingCubit, OnboardingState>(
       listenWhen: (previous, current) => previous.page != current.page,
       listener: _syncPage,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            PageView(
-              controller: _controller,
-              onPageChanged: context.read<OnboardingCubit>().pageChanged,
-              children: [
-                for (final slide in OnboardingSlide.values)
-                  _SlideView(slide: slide),
-              ],
-            ),
-            // Fixed controls. Empty areas let swipes through to the pager.
-            const SafeArea(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.sm,
-                  Spacing.md,
-                  Spacing.md,
-                ),
-                child: Column(
-                  children: [
-                    Align(alignment: Alignment.topRight, child: _SkipButton()),
-                    Spacer(),
-                    _PageDots(),
-                    SizedBox(height: _dotsToButton),
-                    _NextButton(),
-                  ],
+      // Back steps through the pages; only the first page lets it close
+      // the app.
+      child: PopScope(
+        canPop: isFirstPage,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.read<OnboardingCubit>().previous();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              PageView(
+                controller: _controller,
+                onPageChanged: context.read<OnboardingCubit>().pageChanged,
+                children: [
+                  for (final slide in OnboardingSlide.values)
+                    _SlideView(slide: slide),
+                ],
+              ),
+              // Fixed controls. Empty areas let swipes through to the pager.
+              const SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.sm,
+                    Spacing.md,
+                    Spacing.md,
+                  ),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: _SkipButton(),
+                      ),
+                      Spacer(),
+                      _PageDots(),
+                      SizedBox(height: _dotsToButton),
+                      _NextButton(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -249,6 +263,7 @@ class _NextButton extends StatelessWidget {
       child: InkWell(
         onTap: isFinishing ? null : () => unawaited(cubit.next()),
         child: SizedBox(
+          width: double.infinity,
           height: _buttonHeight,
           child: Stack(
             alignment: Alignment.center,

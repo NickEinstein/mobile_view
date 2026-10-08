@@ -53,6 +53,21 @@ void main() {
     expect: () => [start.copyWith(page: 2)],
   );
 
+  blocTest<OnboardingCubit, OnboardingState>(
+    'Back goes to the previous page',
+    build: buildCubit,
+    seed: () => start.copyWith(page: 2),
+    act: (cubit) => cubit.previous(),
+    expect: () => [start.copyWith(page: 1)],
+  );
+
+  blocTest<OnboardingCubit, OnboardingState>(
+    'Back on the first page changes nothing (the app closes instead)',
+    build: buildCubit,
+    act: (cubit) => cubit.previous(),
+    expect: () => <OnboardingState>[],
+  );
+
   test('knows when it is on the last page', () {
     expect(start.isLastPage, isFalse);
     expect(start.copyWith(page: 3).isLastPage, isTrue);
