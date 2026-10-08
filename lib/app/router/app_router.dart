@@ -38,6 +38,9 @@ import 'package:vital_reg_mobile/features/modifications/presentation/request/vie
 import 'package:vital_reg_mobile/features/onboarding/domain/onboarding_repository.dart';
 import 'package:vital_reg_mobile/features/onboarding/presentation/view/onboarding_page.dart';
 import 'package:vital_reg_mobile/features/payments/presentation/view/payment_page.dart';
+import 'package:vital_reg_mobile/features/still_birth/presentation/details/view/still_birth_details_page.dart';
+import 'package:vital_reg_mobile/features/still_birth/presentation/form/view/still_birth_form_page.dart';
+import 'package:vital_reg_mobile/features/still_birth/presentation/home/view/still_birth_home_page.dart';
 
 GoRouter createRouter({
   required AuthBloc authBloc,
@@ -97,6 +100,8 @@ GoRouter createRouter({
                         _birthAttestationRoute(rootNavigatorKey)
                       else if (module == AppModule.modifications)
                         _modificationsRoute(rootNavigatorKey)
+                      else if (module == AppModule.stillBirthRegistration)
+                        _stillBirthRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -247,6 +252,37 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
           queriedRecordId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
+      ),
+    ],
+  );
+}
+
+/// Still Birth Registration: home, the form and one registration's
+/// details.
+GoRoute _stillBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.stillBirth;
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => StillBirthHomePage(
+      onOpenForm: () => context.push<void>(AppRoutes.stillBirthForm),
+      onOpenRegistration: (id) =>
+          context.push<void>(AppRoutes.stillBirthRegistration(id)),
+    ),
+    routes: [
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.stillBirthForm.substring(home.length + 1),
+        builder: (context, state) =>
+            StillBirthFormPage(onExit: () => context.pop()),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.stillBirthRegistrationPattern.substring(
+          home.length + 1,
+        ),
+        builder: (context, state) =>
+            StillBirthDetailsPage(id: state.pathParameters['id']!),
       ),
     ],
   );

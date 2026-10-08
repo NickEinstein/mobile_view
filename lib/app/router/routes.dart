@@ -49,6 +49,13 @@ abstract final class AppRoutes {
   static String modificationQueried(String kind, String id) =>
       '$modifications/$kind/queried/${Uri.encodeComponent(id)}';
 
+  // Still Birth Registration (the module path must match AppModule).
+  static const stillBirth = '/registrations/still-birth';
+  static const stillBirthForm = '$stillBirth/form';
+  static const stillBirthRegistrationPattern = '$stillBirth/registrations/:id';
+  static String stillBirthRegistration(String id) =>
+      '$stillBirth/registrations/${Uri.encodeComponent(id)}';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login, forgotPassword};
 
