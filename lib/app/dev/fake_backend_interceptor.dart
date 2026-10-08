@@ -6,7 +6,8 @@ import 'package:dio/dio.dart';
 ///
 /// Demo behaviour:
 /// - any email and password (8+ characters) signs in as a registrar;
-/// - password reset always sends a code, and the code is `1234`.
+/// - password reset always sends a code, and the code is `1234`;
+/// - the dashboard shows sample figures.
 class FakeBackendInterceptor extends Interceptor {
   /// [latency] is long enough by default to see loading states; tests
   /// pass zero.
@@ -56,9 +57,48 @@ class FakeBackendInterceptor extends Interceptor {
         }
       case ('POST', '/auth/password/reset'):
         _ok(handler, options, null);
+      // The home dashboard, on the backend's paths.
+      case ('GET', '/statistics/counts'):
+        _ok(handler, options, {
+          for (final MapEntry(:key, :value) in _monthlyBase.entries)
+            // All time, as SQL counts arrive: strings.
+            key: '${value.reduce((a, b) => a + b) * 7}',
+        });
+      case ('GET', _)
+          when path.startsWith('/statistics/') &&
+              _monthlyBase.containsKey(path.substring('/statistics/'.length)):
+        _ok(
+          handler,
+          options,
+          _monthly(
+            path.substring('/statistics/'.length),
+            options.queryParameters['period'],
+          ),
+        );
       case _:
         _fail(handler, options, 404, 'Not available in the demo backend.');
     }
+  }
+
+  /// Sample monthly numbers per `/statistics/<type>`.
+  static const _monthlyBase = {
+    'birth': [4, 6, 5, 8, 7, 9, 11, 10, 12, 9, 8, 10],
+    'attestation': [1, 2, 1, 3, 2, 2, 4, 3, 2, 3, 2, 1],
+    'death': [2, 1, 3, 2, 2, 1, 3, 2, 1, 2, 3, 2],
+    'stillbirth': [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+  };
+
+  /// So the chart has something to draw. Earlier years have more records;
+  /// the current year is still filling up.
+  static List<int> _monthly(String type, Object? rawPeriod) {
+    final now = DateTime.now();
+    final year = int.tryParse('$rawPeriod') ?? now.year;
+    final scale = (now.year - year).clamp(0, 4) + 1;
+    final monthsSoFar = year < now.year ? 12 : now.month;
+    return [
+      for (var m = 0; m < 12; m++)
+        m < monthsSoFar ? _monthlyBase[type]![m] * scale : 0,
+    ];
   }
 
   void _ok(
