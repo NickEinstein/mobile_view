@@ -32,6 +32,23 @@ abstract final class AppRoutes {
   static String birthAttestationQueried(String id) =>
       '$birthAttestation/queried/${Uri.encodeComponent(id)}';
 
+  // Modifications (the module path must match AppModule). `:kind` is a
+  // ModificationKind name.
+  static const modifications = '/records/modifications';
+  static const modificationNewPattern = '$modifications/:kind/new';
+  static String modificationNew(String kind) => '$modifications/$kind/new';
+  static const modificationPaymentPattern = '$modifications/:kind/payment';
+  static String modificationPayment(String kind) =>
+      '$modifications/$kind/payment';
+  static const modificationLookupPattern = '$modifications/:kind/record';
+  static String modificationLookup(String kind) =>
+      '$modifications/$kind/record';
+  static const modificationFormPattern = '$modifications/:kind/form';
+  static String modificationForm(String kind) => '$modifications/$kind/form';
+  static const modificationQueriedPattern = '$modifications/:kind/queried/:id';
+  static String modificationQueried(String kind, String id) =>
+      '$modifications/$kind/queried/${Uri.encodeComponent(id)}';
+
   /// Reachable without a session.
   static const publicRoutes = {splash, onboarding, login, forgotPassword};
 

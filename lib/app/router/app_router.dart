@@ -26,6 +26,15 @@ import 'package:vital_reg_mobile/features/birth_registration/presentation/detail
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/nin_check/view/nin_check_page.dart';
+import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_options.dart';
+import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_record.dart';
+import 'package:vital_reg_mobile/features/modifications/domain/entities/modification_request.dart';
+import 'package:vital_reg_mobile/features/modifications/domain/modifications_repository.dart';
+import 'package:vital_reg_mobile/features/modifications/presentation/form/view/modification_form_page.dart';
+import 'package:vital_reg_mobile/features/modifications/presentation/form/view/queried_modification_page.dart';
+import 'package:vital_reg_mobile/features/modifications/presentation/home/view/modifications_home_page.dart';
+import 'package:vital_reg_mobile/features/modifications/presentation/lookup/view/record_lookup_page.dart';
+import 'package:vital_reg_mobile/features/modifications/presentation/request/view/modification_request_page.dart';
 import 'package:vital_reg_mobile/features/onboarding/domain/onboarding_repository.dart';
 import 'package:vital_reg_mobile/features/onboarding/presentation/view/onboarding_page.dart';
 import 'package:vital_reg_mobile/features/payments/presentation/view/payment_page.dart';
@@ -86,6 +95,8 @@ GoRouter createRouter({
                         _birthRegistrationRoute(rootNavigatorKey)
                       else if (module == AppModule.birthAttestation)
                         _birthAttestationRoute(rootNavigatorKey)
+                      else if (module == AppModule.modifications)
+                        _modificationsRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -235,6 +246,113 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         (context, state) => AttestationFormPage(
           queriedRecordId: state.pathParameters['id'],
           onExit: () => context.pop(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Modifications: the request, its payment, the record lookup and the
+/// form. Each step gets the earlier ones as `extra`; without it, home.
+GoRoute _modificationsRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.modifications;
+  ModificationKind? kindOf(GoRouterState state) =>
+      ModificationKind.values.asNameMap()[state.pathParameters['kind']];
+  String? unknownKind(BuildContext context, GoRouterState state) =>
+      kindOf(state) == null ? home : null;
+  String? needs<T>(BuildContext context, GoRouterState state) =>
+      kindOf(state) == null || state.extra is! T ? home : null;
+
+  // Named, so the flow can pop back to it (which also completes the
+  // home's push and reloads its counts).
+  const homeName = 'modifications';
+  void backHome(BuildContext context) => Navigator.of(
+    context,
+  ).popUntil((route) => route.settings.name == homeName);
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    name: homeName,
+    path: home.substring(1),
+    builder: (context, state) => ModificationsHomePage(
+      onNewRequest: (kind) =>
+          context.push<void>(AppRoutes.modificationNew(kind.name)),
+      onOpenQueried: (kind, id) =>
+          context.push<void>(AppRoutes.modificationQueried(kind.name, id)),
+    ),
+    routes: [
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.modificationNewPattern.substring(home.length + 1),
+        redirect: unknownKind,
+        builder: (context, state) => ModificationRequestPage(
+          kind: kindOf(state)!,
+          onProceed: (request) => unawaited(
+            context.push<void>(
+              AppRoutes.modificationPayment(request.kind.name),
+              extra: request,
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.modificationPaymentPattern.substring(home.length + 1),
+        redirect: needs<ModificationRequest>,
+        // Paid: the lookup replaces this screen, so Back returns to the
+        // request.
+        builder: (context, state) {
+          final request = state.extra! as ModificationRequest;
+          return PaymentPage(
+            source: GetIt.instance<ModificationsRepository>().payments(request),
+            onPaid: () => context.pushReplacement(
+              AppRoutes.modificationLookup(request.kind.name),
+              extra: request,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.modificationLookupPattern.substring(home.length + 1),
+        redirect: needs<ModificationRequest>,
+        builder: (context, state) {
+          final request = state.extra! as ModificationRequest;
+          return RecordLookupPage(
+            kind: request.kind,
+            onFound: (record) => unawaited(
+              context.push<void>(
+                AppRoutes.modificationForm(request.kind.name),
+                extra: (request, record),
+              ),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.modificationFormPattern.substring(home.length + 1),
+        redirect: needs<(ModificationRequest, ModificationRecord)>,
+        // Done or exit: back to the home, which reloads.
+        builder: (context, state) {
+          final (request, record) =
+              state.extra! as (ModificationRequest, ModificationRecord);
+          return ModificationFormPage(
+            request: request,
+            record: record,
+            onDone: () => backHome(context),
+            onExit: () => backHome(context),
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.modificationQueriedPattern.substring(home.length + 1),
+        redirect: unknownKind,
+        builder: (context, state) => QueriedModificationPage(
+          kind: kindOf(state)!,
+          id: state.pathParameters['id']!,
+          onDone: () => backHome(context),
         ),
       ),
     ],
