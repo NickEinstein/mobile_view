@@ -73,6 +73,19 @@ abstract final class AppRoutes {
   static String surrogacyBirthQueried(String id) =>
       '$surrogacyBirth/queried/${Uri.encodeComponent(id)}';
 
+  // Adopted Child Registration (the module path must match AppModule).
+  static const adoptedChild = '/registrations/adopted-child';
+  static const adoptedChildNin = '$adoptedChild/nin';
+  static const adoptedChildPayment = '$adoptedChild/payment';
+  static const adoptedChildForm = '$adoptedChild/form';
+  static const adoptedChildApplicationPattern =
+      '$adoptedChild/applications/:id';
+  static String adoptedChildApplication(String id) =>
+      '$adoptedChild/applications/${Uri.encodeComponent(id)}';
+  static const adoptedChildQueriedPattern = '$adoptedChild/queried/:id';
+  static String adoptedChildQueried(String id) =>
+      '$adoptedChild/queried/${Uri.encodeComponent(id)}';
+
   static const deathRecordPattern = '$deathRegistration/records/:id';
   static String deathRecord(String id) =>
       '$deathRegistration/records/${Uri.encodeComponent(id)}';

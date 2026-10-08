@@ -12,6 +12,13 @@ import 'package:vital_reg_mobile/app/view/module_placeholder_page.dart';
 import 'package:vital_reg_mobile/app/view/splash_page.dart';
 import 'package:vital_reg_mobile/app/view/tab_placeholder_page.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
+import 'package:vital_reg_mobile/features/adopted_child/domain/adopted_child_repository.dart';
+import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_draft.dart';
+import 'package:vital_reg_mobile/features/adopted_child/presentation/details/view/adoption_details_page.dart';
+import 'package:vital_reg_mobile/features/adopted_child/presentation/form/view/adoption_form_page.dart';
+import 'package:vital_reg_mobile/features/adopted_child/presentation/home/view/adopted_child_home_page.dart';
+import 'package:vital_reg_mobile/features/adopted_child/presentation/nin/view/child_nin_page.dart'
+    as adoption;
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
@@ -127,6 +134,8 @@ GoRouter createRouter({
                         _deathRoute(rootNavigatorKey)
                       else if (module == AppModule.surrogacyBirthRegistration)
                         _surrogacyBirthRoute(rootNavigatorKey)
+                      else if (module == AppModule.adoptedChildRegistration)
+                        _adoptedChildRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -349,6 +358,72 @@ GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       step(
         AppRoutes.surrogacyBirthQueriedPattern,
         (context, state) => SurrogacyFormPage(
+          queriedId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Adopted Child Registration: the server creates the application, then
+/// the child's NIN, the payment and the form.
+GoRoute _adoptedChildRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.adoptedChild;
+  String stagePath(AdoptionStage stage) => switch (stage) {
+    AdoptionStage.nin => AppRoutes.adoptedChildNin,
+    AdoptionStage.payment => AppRoutes.adoptedChildPayment,
+    AdoptionStage.form => AppRoutes.adoptedChildForm,
+  };
+  GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    builder: builder,
+  );
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => AdoptedChildHomePage(
+      onStart: () => context.push<void>(AppRoutes.adoptedChildNin),
+      onResumeAt: (stage) => context.push<void>(stagePath(stage)),
+      onOpenApplication: (id) =>
+          context.push<void>(AppRoutes.adoptedChildApplication(id)),
+    ),
+    // Each step replaces the last, so Back returns to the home.
+    routes: [
+      step(
+        AppRoutes.adoptedChildNin,
+        (context, state) => adoption.ChildNinPage(
+          onDone: () => context.pushReplacement(AppRoutes.adoptedChildPayment),
+        ),
+      ),
+      step(
+        AppRoutes.adoptedChildPayment,
+        (context, state) => PaymentPage(
+          source: GetIt.instance<AdoptedChildRepository>().payments,
+          onPaid: () => context.pushReplacement(AppRoutes.adoptedChildForm),
+        ),
+      ),
+      step(
+        AppRoutes.adoptedChildForm,
+        (context, state) => AdoptionFormPage(onExit: () => context.pop()),
+      ),
+      step(
+        AppRoutes.adoptedChildApplicationPattern,
+        (context, state) => AdoptionDetailsPage(
+          id: state.pathParameters['id']!,
+          // The correction or the draft replaces the details, so Back
+          // returns home.
+          onRespondToQuery: () => context.pushReplacement(
+            AppRoutes.adoptedChildQueried(state.pathParameters['id']!),
+          ),
+          onContinue: (stage) => context.pushReplacement(stagePath(stage)),
+        ),
+      ),
+      step(
+        AppRoutes.adoptedChildQueriedPattern,
+        (context, state) => AdoptionFormPage(
           queriedId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
