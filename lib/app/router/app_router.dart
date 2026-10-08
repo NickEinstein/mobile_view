@@ -15,6 +15,12 @@ import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/domain/birth_attestation_repository.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/presentation/details/view/attestation_details_page.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/presentation/face/view/face_validation_page.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/presentation/form/view/attestation_form_page.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/presentation/home/view/birth_attestation_home_page.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/presentation/nin/view/applicant_nin_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/details/view/application_details_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
@@ -78,6 +84,8 @@ GoRouter createRouter({
                     if (featureFlags.isEnabled(module.feature))
                       if (module == AppModule.birthRegistration)
                         _birthRegistrationRoute(rootNavigatorKey)
+                      else if (module == AppModule.birthAttestation)
+                        _birthAttestationRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -158,6 +166,76 @@ GoRoute _birthRegistrationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         path: AppRoutes.birthApplicationPattern.substring(home.length + 1),
         builder: (context, state) =>
             ApplicationDetailsPage(id: state.pathParameters['id']!),
+      ),
+    ],
+  );
+}
+
+/// Birth Attestation: payment, the
+/// applicant's NIN (or none), face, then the form.
+GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.birthAttestation;
+  GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    builder: builder,
+  );
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => BirthAttestationHomePage(
+      onStartApplication: () =>
+          context.push<void>(AppRoutes.birthAttestationNew),
+      onResumeAtFace: () => context.push<void>(AppRoutes.birthAttestationFace),
+      onResumeAtForm: () => context.push<void>(AppRoutes.birthAttestationForm),
+      onOpenApplication: (id) =>
+          context.push<void>(AppRoutes.birthAttestationApplication(id)),
+      onUpdateQueried: (id) =>
+          context.push<void>(AppRoutes.birthAttestationQueried(id)),
+    ),
+    // Each step replaces the last, so Back returns to the home.
+    routes: [
+      step(
+        AppRoutes.birthAttestationNew,
+        (context, state) => PaymentPage(
+          source: GetIt.instance<BirthAttestationRepository>().payments,
+          onPaid: () => context.pushReplacement(AppRoutes.birthAttestationNin),
+        ),
+      ),
+      step(
+        AppRoutes.birthAttestationNin,
+        (context, state) => ApplicantNinPage(
+          onDone: () => context.pushReplacement(AppRoutes.birthAttestationFace),
+        ),
+      ),
+      step(
+        AppRoutes.birthAttestationFace,
+        (context, state) => FaceValidationPage(
+          onValidated: () =>
+              context.pushReplacement(AppRoutes.birthAttestationForm),
+        ),
+      ),
+      step(
+        AppRoutes.birthAttestationForm,
+        (context, state) => AttestationFormPage(onExit: () => context.pop()),
+      ),
+      step(
+        AppRoutes.birthAttestationApplicationPattern,
+        (context, state) => AttestationDetailsPage(
+          id: state.pathParameters['id']!,
+          // The correction replaces the details, so Back returns home.
+          onUpdate: () => context.pushReplacement(
+            AppRoutes.birthAttestationQueried(state.pathParameters['id']!),
+          ),
+        ),
+      ),
+      step(
+        AppRoutes.birthAttestationQueriedPattern,
+        (context, state) => AttestationFormPage(
+          queriedRecordId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+        ),
       ),
     ],
   );

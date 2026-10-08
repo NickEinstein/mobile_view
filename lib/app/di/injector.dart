@@ -16,6 +16,7 @@ import 'package:vital_reg_mobile/core/session/token_storage.dart';
 import 'package:vital_reg_mobile/core/session/user_scope.dart';
 import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
+import 'package:vital_reg_mobile/features/birth_attestation/birth_attestation_module.dart';
 import 'package:vital_reg_mobile/features/birth_registration/birth_registration_module.dart';
 import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
@@ -85,5 +86,6 @@ Future<void> configureDependencies(AppConfig config) async {
         ? const DemoPaymentCheckout()
         : const GatewayPaymentCheckout(),
   );
+  registerBirthAttestationModule(getIt);
   registerOnboardingModule(getIt);
 }
