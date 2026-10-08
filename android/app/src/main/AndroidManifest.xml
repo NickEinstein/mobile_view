@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release builds need this to reach the API and Remita's checkout. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="vital_reg_mobile"
+        android:label="Vital Reg"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

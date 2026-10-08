@@ -30,6 +30,7 @@ dependencies:
 
 dev_dependencies:
   bloc_test: ^10.0.0
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
@@ -66,3 +67,14 @@ flutter:
           weight: 600
         - asset: assets/fonts/OpenSans-Bold.ttf
           weight: 700
+
+# Launcher icons generated from assets/launcher/ (built from branding/logo_mark.png).
+# Regenerate with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/launcher/icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/launcher/icon_foreground.png
+  remove_alpha_ios: true
+  min_sdk_android: 21
