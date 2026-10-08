@@ -41,6 +41,7 @@ Only `config/*.example.json` is committed; your real `config/*.json` files are g
 | `SESSION_TIMEOUT_MINUTES` | Inactivity sign-out |
 | `SENTRY_DSN` | Crash reporting; empty = log locally |
 | `FEATURES` | Comma-separated enabled modules. **Anything unfinished stays off in prod.** |
+| `USE_FAKE_API` | Dev only. `true` answers auth calls locally (any login works; reset code is `1234`). Refused in staging/prod. |
 
 **No secrets go in config.** Everything compiled into the app can be extracted.
 Payment keys, signing keys and service credentials belong on the backend.
