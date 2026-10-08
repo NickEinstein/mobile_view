@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vital_reg_mobile/app/dev/fake_backend_interceptor.dart';
+import 'package:vital_reg_mobile/features/adopted_child/data/adopted_child_repository_impl.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/data/birth_attestation_repository_impl.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/data/face_verifier.dart';
 import 'package:vital_reg_mobile/features/birth_registration/data/birth_registration_repository_impl.dart';
@@ -154,6 +155,19 @@ void main() {
     }
     final first = ok(await repository.details(items.first.id));
     expect(first.summary.status, ApplicationStatus.approved);
+  });
+
+  test('adopted child', () async {
+    final repository = AdoptedChildRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+    ok(await repository.referenceData());
+    ok(await repository.drafts());
+    await readsEverything(
+      repository,
+      (id) async => ok(await repository.details(id)),
+    );
   });
 
   test('surrogacy birth', () async {
