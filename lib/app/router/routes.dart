@@ -60,6 +60,19 @@ abstract final class AppRoutes {
   static const deathRegistration = '/registrations/death';
   static const deathForm = '$deathRegistration/form';
 
+  // Surrogacy Birth Registration (the module path must match AppModule).
+  static const surrogacyBirth = '/registrations/surrogacy-birth';
+  static const surrogacyBirthNin = '$surrogacyBirth/nin';
+  static const surrogacyBirthPayment = '$surrogacyBirth/payment';
+  static const surrogacyBirthForm = '$surrogacyBirth/form';
+  static const surrogacyBirthApplicationPattern =
+      '$surrogacyBirth/applications/:id';
+  static String surrogacyBirthApplication(String id) =>
+      '$surrogacyBirth/applications/${Uri.encodeComponent(id)}';
+  static const surrogacyBirthQueriedPattern = '$surrogacyBirth/queried/:id';
+  static String surrogacyBirthQueried(String id) =>
+      '$surrogacyBirth/queried/${Uri.encodeComponent(id)}';
+
   static const deathRecordPattern = '$deathRegistration/records/:id';
   static String deathRecord(String id) =>
       '$deathRegistration/records/${Uri.encodeComponent(id)}';

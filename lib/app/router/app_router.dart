@@ -53,6 +53,13 @@ import 'package:vital_reg_mobile/features/payments/presentation/view/payment_pag
 import 'package:vital_reg_mobile/features/still_birth/presentation/details/view/still_birth_details_page.dart';
 import 'package:vital_reg_mobile/features/still_birth/presentation/form/view/still_birth_form_page.dart';
 import 'package:vital_reg_mobile/features/still_birth/presentation/home/view/still_birth_home_page.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/domain/entities/surrogacy_draft.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/domain/surrogacy_birth_repository.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/presentation/details/view/surrogacy_details_page.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/presentation/form/view/surrogacy_form_page.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/presentation/home/view/surrogacy_birth_home_page.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/presentation/nin/view/child_nin_page.dart';
+import 'package:vital_reg_mobile/features/surrogacy_birth/presentation/payment/surrogacy_notice_dialog.dart';
 
 GoRouter createRouter({
   required AuthBloc authBloc,
@@ -118,6 +125,8 @@ GoRouter createRouter({
                         _reissuanceRoute(rootNavigatorKey)
                       else if (module == AppModule.deathRegistration)
                         _deathRoute(rootNavigatorKey)
+                      else if (module == AppModule.surrogacyBirthRegistration)
+                        _surrogacyBirthRoute(rootNavigatorKey)
                       else
                         GoRoute(
                           parentNavigatorKey: rootNavigatorKey,
@@ -266,6 +275,81 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         AppRoutes.birthAttestationQueriedPattern,
         (context, state) => AttestationFormPage(
           queriedRecordId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Surrogacy Birth Registration: the server creates the application, then
+/// the child's NIN, the payment and the form.
+GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+  const home = AppRoutes.surrogacyBirth;
+  GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: path.substring(home.length + 1),
+    builder: builder,
+  );
+
+  return GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: home.substring(1),
+    builder: (context, state) => SurrogacyBirthHomePage(
+      onStart: () => context.push<void>(AppRoutes.surrogacyBirthNin),
+      onResumeAt: (stage) => context.push<void>(switch (stage) {
+        SurrogacyStage.nin => AppRoutes.surrogacyBirthNin,
+        SurrogacyStage.payment => AppRoutes.surrogacyBirthPayment,
+        SurrogacyStage.form => AppRoutes.surrogacyBirthForm,
+      }),
+      onOpenApplication: (id) =>
+          context.push<void>(AppRoutes.surrogacyBirthApplication(id)),
+    ),
+    // Each step replaces the last, so Back returns to the home.
+    routes: [
+      step(
+        AppRoutes.surrogacyBirthNin,
+        (context, state) => ChildNinPage(
+          onDone: () =>
+              context.pushReplacement(AppRoutes.surrogacyBirthPayment),
+        ),
+      ),
+      step(
+        AppRoutes.surrogacyBirthPayment,
+        (context, state) => PaymentPage(
+          source: GetIt.instance<SurrogacyBirthRepository>().payments,
+          onPaid: () async {
+            await showSurrogacyNoticeDialog(context);
+            if (context.mounted) {
+              context.pushReplacement(AppRoutes.surrogacyBirthForm);
+            }
+          },
+        ),
+      ),
+      step(
+        AppRoutes.surrogacyBirthForm,
+        (context, state) => SurrogacyFormPage(onExit: () => context.pop()),
+      ),
+      step(
+        AppRoutes.surrogacyBirthApplicationPattern,
+        (context, state) => SurrogacyDetailsPage(
+          id: state.pathParameters['id']!,
+          // The correction or the draft replaces the details, so Back
+          // returns home.
+          onRespondToQuery: () => context.pushReplacement(
+            AppRoutes.surrogacyBirthQueried(state.pathParameters['id']!),
+          ),
+          onContinue: (stage) => context.pushReplacement(switch (stage) {
+            SurrogacyStage.nin => AppRoutes.surrogacyBirthNin,
+            SurrogacyStage.payment => AppRoutes.surrogacyBirthPayment,
+            SurrogacyStage.form => AppRoutes.surrogacyBirthForm,
+          }),
+        ),
+      ),
+      step(
+        AppRoutes.surrogacyBirthQueriedPattern,
+        (context, state) => SurrogacyFormPage(
+          queriedId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
       ),
