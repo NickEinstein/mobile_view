@@ -7,6 +7,7 @@ class AppButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.isLoading = false,
+    this.muted = false,
     super.key,
   });
 
@@ -14,9 +15,25 @@ class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
 
+  /// Looks disabled but still responds, e.g. "Next" on an incomplete step,
+  /// where a tap points out what's missing.
+  final bool muted;
+
   @override
   Widget build(BuildContext context) {
+    final disabledStyle = Theme.of(context).filledButtonTheme.style;
+    const disabled = {WidgetState.disabled};
     return FilledButton(
+      style: muted
+          ? FilledButton.styleFrom(
+              backgroundColor: disabledStyle?.backgroundColor?.resolve(
+                disabled,
+              ),
+              foregroundColor: disabledStyle?.foregroundColor?.resolve(
+                disabled,
+              ),
+            )
+          : null,
       onPressed: isLoading ? null : onPressed,
       child: isLoading
           ? SizedBox.square(
