@@ -169,3 +169,142 @@ List<String> _missingRegistrationFields(Map<String, Object?> body) => [
       when documents.isEmpty)
     'SupportingDocument',
 ];
+
+/// `{result, pagination}`, the surrogacy list's shape, filtered by
+/// `status` ("pending", "approved", …).
+Map<String, Object?> _surrogacyRegistrations(Map<String, dynamic> query) {
+  final status = query['status'] as String? ?? 'pending';
+  final (code, count) = switch (status) {
+    'approved' => (1, 3),
+    'queried' => (2, 1),
+    'printed' => (1, 4),
+    'drafted' => (3, 1),
+    _ => (0, 2),
+  };
+  final search = (query['search'] as String? ?? '').toLowerCase();
+  final rows = [
+    for (final (i, (name, _, date))
+        in FakeBackendInterceptor._people.indexed.take(count))
+      if (search.isEmpty || name.toLowerCase().contains(search))
+        {
+          'id': 'surrogacy-$status-$i',
+          'referenceId': 'SBR-2026-000${4821 + i}',
+          'status': code,
+          'childSurname': name.split(' ').last,
+          'childFirstName': name.split(' ').first,
+          'childSex': '${i % 2 + 1}',
+          'createdAt': date,
+        },
+  ];
+  return {
+    'result': rows,
+    'pagination': {'page': 1, 'pages': 1, 'total': rows.length},
+  };
+}
+
+/// A surrogacy application for list id `surrogacy-<status>-<index>` (or a
+/// resumed draft's reference id).
+Map<String, Object?>? _surrogacyRecord(String id) {
+  final match = RegExp(r'^surrogacy-(\w+)-(\d+)$').firstMatch(id);
+  final status = match?.group(1) ?? (id.startsWith('SBR-') ? 'drafted' : null);
+  final index = int.tryParse(match?.group(2) ?? '0') ?? 0;
+  const people = FakeBackendInterceptor._people;
+  if (status == null || index >= people.length) return null;
+  final code = switch (status) {
+    'pending' => 0,
+    'approved' || 'printed' => 1,
+    'queried' => 2,
+    'drafted' => 3,
+    _ => null,
+  };
+  if (code == null) return null;
+  final (name, _, date) = people[index];
+  final [firstName, surname] = name.split(' ');
+  final drafted = code == 3;
+  return {
+    'id': match == null ? 'surrogacy-drafted-0' : id,
+    'referenceId': match == null ? id : 'SBR-2026-000${4821 + index}',
+    'status': code,
+    'createdAt': date,
+    'paymentReference': 'PAIDDEMO',
+    'childNinVerified': false,
+    if (code == 1) 'surrogacyCertificateNo': 'SC-2026-00${index + 31}',
+    if (code == 2)
+      'remarks':
+          'The court order date does not match the uploaded Court '
+          'Surrogacy Agreement Order.',
+    'childSurname': surname,
+    'childFirstName': firstName,
+    'dateOfBirth': '2025-09-09',
+    'childSex': 2,
+    'birthType': 1,
+    'placeOfBirth': 1,
+    'birthOrder': 1,
+    'birthCountry': 63,
+    'birthState': 25,
+    'birthLga': 501,
+    'townOfBirth': 'Wuse 2',
+    'localityType': 2,
+    'regCenter': 5011,
+    'courtNameOrReference': 'Federal High Court / FHC/L/CS/2025/0048',
+    'parentalOrderDate': '2025-09-01',
+    'surrogacyArrangementType': 'gestational',
+    'lp1FullName': 'Ololade Simisola',
+    'lp1MaritalStatus': 1,
+    'lp1Address': 'No 12 Adeleke road, Lekki',
+    'lp1ResidenceCountry': 63,
+    'lp1ResidenceState': 25,
+    'lp1ResidenceLga': 501,
+    'lp1LocalityType': 2,
+    'lp1Occupation': 100,
+    'lp1Nationality': 63,
+    'lp1Nin': '72921010909',
+    'lp1LiteracyLevel': 1,
+    'lp1EducationLevel': 9,
+    'lp1Phone': '09012348349',
+    'lp2Present': true,
+    'lp2FullName': 'Ololade Adegoke',
+    'lp2MaritalStatus': 1,
+    'lp2Address': 'No 12 Adeleke road, Lekki',
+    'lp2ResidenceCountry': 63,
+    'lp2ResidenceState': 25,
+    'lp2ResidenceLga': 501,
+    'lp2LocalityType': 2,
+    'lp2Occupation': 200,
+    'lp2Nationality': 63,
+    'lp2LiteracyLevel': 1,
+    'lp2EducationLevel': 7,
+    'lp2Phone': '09129830304',
+    'smFullName': 'Bala Michelle',
+    'smAgeAtBirth': 28,
+    'smBirthOrder': 1,
+    'smNationality': 63,
+    if (!drafted) ...{
+      'infSurname': 'Keith',
+      'infFirstName': 'Ryan',
+      'infSameResidenceAsLp1': false,
+      'infCountry': 31,
+      'infResidenceAddress': 'No 12 Adeleke road, Lekki',
+      'infNationality': 31,
+      'infOriginCountry': 31,
+      'infRelationshipToChild': 13,
+      'infPhone': '08123212820',
+      'infPassportNo': 'X12345678',
+      'infConsentType': 'signature_pad',
+      'infSignature': 'surrogacy/sign-$index.png',
+      'supportingDocument': [
+        for (final type in [
+          'court_surrogacy_agreement_order',
+          'parental_order',
+          'legal_mother_identity_document',
+          'legal_father_identity_document',
+        ])
+          {
+            'type': type,
+            'file': 'surrogacy/$type.jpg',
+            'mimeType': 'image/jpeg',
+          },
+      ],
+    },
+  };
+}

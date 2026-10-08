@@ -31,6 +31,9 @@ part 'fake_backend_data.dart';
 /// - Death Registration lists sample records in the backend's shapes, and
 ///   registering one always succeeds. The queried record has the wrong
 ///   documents; correcting it always succeeds.
+/// - Surrogacy Birth lists sample applications in the backend's shapes;
+///   starting one, recording the child's NIN (or a skip), attaching the
+///   payment and saving each section always succeed.
 /// The face service's URL in the dev config (`config/dev.json`).
 const demoFaceUrl = 'https://face.demo.test/api/v1/matchWithSelfie';
 
@@ -440,6 +443,56 @@ class FakeBackendInterceptor extends Interceptor {
           'message': 'Record added successfully',
           'item': {'id': 30087999},
         });
+      // Surrogacy Birth, on the backend's paths.
+      // As the backend's typed-in reference check.
+      case ('GET', '/surrogacy-birth-registration/payment'):
+        final reference = options.queryParameters['reference'];
+        _ok(handler, options, {
+          'valid':
+              paidReferences.contains(reference) ||
+              reference == demoPaidReference,
+          'reference': reference,
+        });
+      case ('GET', '/surrogacy-birth-registration/stats'):
+        _ok(handler, options, {
+          'Pending': 2,
+          'Approved': 3,
+          'Queried': 1,
+          'Printed': 4,
+        });
+      case ('GET', '/surrogacy-birth-registration'):
+        _ok(handler, options, _surrogacyRegistrations(options.queryParameters));
+      case ('POST', '/surrogacy-birth-registration/initiate'):
+        final serial = DateTime.now().millisecondsSinceEpoch % 10000000;
+        _ok(handler, options, {
+          'success': true,
+          'referenceId':
+              'SBR-${DateTime.now().year}-${'$serial'.padLeft(7, '0')}',
+        });
+      case ('POST' || 'PATCH', _)
+          when path.startsWith('/surrogacy-birth-registration/'):
+        _ok(handler, options, {'success': true});
+      case ('GET', _)
+          when path.startsWith('/surrogacy-birth-registration/') &&
+              path.endsWith('/resume'):
+        final reference = path.split('/')[2];
+        _ok(handler, options, {
+          'success': true,
+          'lastCompletedSection': 2,
+          'data': _surrogacyRecord(Uri.decodeComponent(reference)),
+        });
+      case ('GET', _) when path.startsWith('/surrogacy-birth-registration/'):
+        final record = _surrogacyRecord(
+          Uri.decodeComponent(path.substring(path.lastIndexOf('/') + 1)),
+        );
+        if (record == null) {
+          _fail(handler, options, 404, 'No such application.');
+        } else {
+          // As the backend's `single`: without the record's id.
+          _ok(handler, options, {
+            'data': {...record}..remove('id'),
+          });
+        }
       // The home dashboard, on the backend's paths.
       case ('GET', '/statistics/counts'):
         _ok(handler, options, {
