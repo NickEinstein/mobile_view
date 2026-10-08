@@ -15,6 +15,7 @@ import 'package:vital_reg_mobile/core/session/session_manager.dart';
 import 'package:vital_reg_mobile/core/session/token_storage.dart';
 import 'package:vital_reg_mobile/core/session/user_scope.dart';
 import 'package:vital_reg_mobile/core/storage/user_storage.dart';
+import 'package:vital_reg_mobile/features/adopted_child/adopted_child_module.dart';
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/birth_attestation_module.dart';
 import 'package:vital_reg_mobile/features/birth_registration/birth_registration_module.dart';
@@ -93,6 +94,7 @@ Future<void> configureDependencies(AppConfig config) async {
   registerModificationsModule(getIt);
   registerStillBirthModule(getIt);
   registerSurrogacyBirthModule(getIt);
+  registerAdoptedChildModule(getIt);
   registerCertificateReissuanceModule(getIt);
   registerDeathRegistrationModule(getIt);
   registerOnboardingModule(getIt);
