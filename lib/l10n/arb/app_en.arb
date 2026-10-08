@@ -156,5 +156,51 @@
   },
   "chartChooseYear": "Choose year",
   "dashboardLoadFailed": "Couldn't load your statistics.",
-  "tryAgain": "Try again"
+  "tryAgain": "Try again",
+  "baPaymentTitle": "Payment",
+  "baSummary": "Summary",
+  "baTotal": "Total",
+  "baPay": "Pay {amount}",
+  "@baPay": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "baPaymentNotReceived": "We haven't received this payment yet. If you have paid, it can take a few minutes to confirm.",
+  "baPaymentFailed": "The payment didn't go through. You can try again.",
+  "baCheckPayment": "I've paid, check again",
+  "baPaymentVerifiedTitle": "Payment Verified Successfully",
+  "baPaymentVerifiedMessage": "You can now proceed with your application. Thank you",
+  "baCopyReference": "Copy payment reference",
+  "baReferenceCopied": "Payment reference copied",
+  "baContinue": "Continue",
+  "baMakePayment": "Make Payment",
+  "baEnterReference": "Enter Reference",
+  "baFeeNote": "* Note that this service will attract the sum of {amount}.",
+  "@baFeeNote": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "baReferenceEmailNote": "* Your payment reference will be sent to your email.",
+  "baReferenceLabel": "Payment Reference",
+  "baReferenceHint": "Enter payment reference",
+  "baReferenceNote": "* Enter the reference number that was sent to your email.",
+  "baVerifyReference": "Verify Reference",
+  "baPendingPayment": "You have a payment in progress ({reference}). Tap Pay to continue it.",
+  "@baPendingPayment": {
+    "placeholders": {
+      "reference": { "type": "String" }
+    }
+  },
+  "baEmailCannotReceive": "This email address can't receive mail. Use another one.",
+  "baOtpTitle": "Authorize Transaction",
+  "baOtpMessage": "Enter the code sent to {email}",
+  "@baOtpMessage": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "baOtpFieldLabel": "One-time code",
+  "baAuthorize": "Authorize"
 }
