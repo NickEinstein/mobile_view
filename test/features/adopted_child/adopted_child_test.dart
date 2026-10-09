@@ -279,6 +279,23 @@ void main() {
         AdoptionFormCubit(repository, now: () => _today);
 
     blocTest<AdoptionFormCubit, AdoptionFormState>(
+      "the registration state and LGA are the registrar's",
+      setUp: () => repository.draft = paidDraft(),
+      build: () => AdoptionFormCubit(
+        repository,
+        registrarLocation: (stateId: '19', lgaId: '249'),
+        now: () => _today,
+      ),
+      act: (cubit) => cubit.load(),
+      verify: (cubit) {
+        final child = cubit.state.draft!.child;
+        expect(child[ChildField.registrationState], '19');
+        expect(child[ChildField.registrationLga], '249');
+        expect(repository.draft!.child, child);
+      },
+    );
+
+    blocTest<AdoptionFormCubit, AdoptionFormState>(
       'needs a registration past the NIN step',
       build: build,
       act: (cubit) => cubit.load(),

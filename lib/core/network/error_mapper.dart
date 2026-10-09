@@ -25,6 +25,10 @@ Failure _fromResponse(Response<Object?>? response) {
       message: message,
       fieldErrors: extractFieldErrors(data),
     ),
+    429 => RateLimitedFailure(
+      retryAfter: retryAfterOf(response!),
+      message: message,
+    ),
     401 => UnauthorizedFailure(message),
     403 => ForbiddenFailure(message),
     404 => NotFoundFailure(message),
@@ -56,4 +60,18 @@ Map<String, List<String>> extractFieldErrors(Object? data) {
           ? [for (final v in value) '$v']
           : ['$value'],
   };
+}
+
+/// The wait after a 429: the body's `retryAfter` (seconds), else the
+/// `Retry-After` header, else one second.
+Duration retryAfterOf(Response<Object?> response) {
+  final data = response.data;
+  final fromBody = data is Map<String, Object?> ? data['retryAfter'] : null;
+  final seconds = switch (fromBody) {
+    final num value => value.toDouble(),
+    final String value => double.tryParse(value),
+    _ => double.tryParse(response.headers.value('retry-after') ?? ''),
+  };
+  if (seconds == null || seconds <= 0) return const Duration(seconds: 1);
+  return Duration(milliseconds: (seconds * 1000).ceil());
 }

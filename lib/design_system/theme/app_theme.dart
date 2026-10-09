@@ -28,6 +28,7 @@ abstract final class AppTheme {
     return ThemeData(
       colorScheme: scheme,
       fontFamily: AppFonts.poppins,
+      fontFamilyFallback: AppFonts.fallback,
       // Filled grey fields; the outline appears when focused (or filled, see
       // AppTextField).
       inputDecorationTheme: InputDecorationTheme(
@@ -54,6 +55,7 @@ abstract final class AppTheme {
           // Button text styles don't inherit ThemeData.fontFamily.
           textStyle: const TextStyle(
             fontFamily: AppFonts.poppins,
+            fontFamilyFallback: AppFonts.fallback,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),

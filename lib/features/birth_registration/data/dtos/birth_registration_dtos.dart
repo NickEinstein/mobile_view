@@ -97,12 +97,8 @@ BirthApplicationSummary _summaryFromJson(
   );
 }
 
-/// `GET /birth-registration/{id}`: `{"data": {…the registration, with
-/// "childData", "motherData", "fatherData", "informantData" (people),
-/// "Reg_CenterData" ({"LGAs": {"LGA_ID", "states": {"State_ID"}}}),
-/// "ChildFace" and each "SupportingDocument" "file" as viewing URLs},
-/// "queried": {"reason"} | null}`. Option ids become text, as the form
-/// keeps them.
+/// `GET /birth-registration/{id}`: `{data, queried}`. Files come as URLs,
+/// with `raw*` storage keys.
 ApplicationDetails applicationDetailsFromJson(Object? json) {
   final outer = json.asJsonMap();
   final data = outer.requireMap('data');
@@ -179,7 +175,27 @@ ApplicationDetails applicationDetailsFromJson(Object? json) {
         key: ?_text(value),
     }),
     documents: _documentsFromJson(data['SupportingDocument']),
+    queryReason: _text(_map(outer['queried'])?['reason']),
+    paymentReference: _text(data['reference']),
+    // Storage keys, for sending a correction back without re-uploading.
+    faceKey: _text(data['rawChildFace']),
+    documentKeys: _documentKeysFromJson(data['rawSupportingDocument']),
   );
+}
+
+/// `rawSupportingDocument`: `[{"type", "file" (storage key), "mimeType"}]`.
+Map<DocumentType, String> _documentKeysFromJson(Object? json) {
+  if (json is! List<Object?>) return const {};
+  final byApiType = {for (final t in DocumentType.values) t.apiType: t};
+  return {
+    for (final item in json)
+      if (_map(item) case final map?)
+        if ((byApiType[map['type']], _text(map['file'])) case (
+          final type?,
+          final key?,
+        ))
+          type: key,
+  };
 }
 
 /// "2025-12-12" from a date or an ISO timestamp, so time zones can't move

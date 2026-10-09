@@ -223,6 +223,30 @@ void main() {
       expect(unnamed.fullName, 'reg7');
       expect(unnamed.role, UserRole.registrar);
     });
+
+    test('keeps the account\'s state and LGA, also on the device', () {
+      final dto = UserDto.fromSignIn({
+        'User_ID': 7,
+        'UserName': 'reg7',
+        'Role_ID': '4',
+        'State_ID': 19,
+        'LGA_ID': '249',
+      })!;
+      final kept = UserDto.fromJson(dto.toJson()).toDomain();
+
+      expect((kept.stateId, kept.lgaId), ('19', '249'));
+    });
+
+    test('a copy saved before they were kept reads without them', () {
+      final user = UserDto.fromJson({
+        'id': '7',
+        'fullName': 'reg7',
+        'role': 'registrar',
+        'login': 'reg7',
+      }).toDomain();
+
+      expect((user.stateId, user.lgaId), (null, null));
+    });
   });
 
   test('a configured device id is used as is, and not stored', () async {

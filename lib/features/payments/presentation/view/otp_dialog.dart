@@ -19,6 +19,13 @@ Future<void> _showOtpDialog(BuildContext context) {
   );
 }
 
+/// A wrong or used code comes back as 404; an expired one as 406 with its
+/// own message.
+String _otpError(Failure failure, AppLocalizations l10n) => switch (failure) {
+  NotFoundFailure() => l10n.baOtpInvalid,
+  _ => failure.localize(l10n),
+};
+
 bool _isCodeStep(PaymentStep step) =>
     step == PaymentStep.otp || step == PaymentStep.confirmingOtp;
 
@@ -39,9 +46,29 @@ class _OtpDialog extends StatelessWidget {
       // before the checkout opens.
       listenWhen: (previous, current) =>
           _isCodeStep(previous.step) && !_isCodeStep(current.step),
-      listener: (context, _) => Navigator.of(context).pop(),
+      // Unless the dialog is already closing (Close or Back cancelled the
+      // code), which would otherwise pop the payment page too.
+      listener: (context, _) {
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          Navigator.of(context).pop();
+        }
+      },
       child: AppDialog(
         children: [
+          // Closing keeps the payment page, ready for another try. Hidden while the
+          // code is checked, so the result can't land on a closed dialog.
+          Align(
+            alignment: Alignment.centerRight,
+            child: Visibility.maintain(
+              visible: !isConfirming,
+              child: IconButton(
+                tooltip: l10n.baOtpClose,
+                visualDensity: VisualDensity.compact,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close, color: AppPalette.ink),
+              ),
+            ),
+          ),
           Text(
             l10n.baOtpTitle,
             textAlign: TextAlign.center,
@@ -70,7 +97,7 @@ class _OtpDialog extends StatelessWidget {
           ),
           if (failure != null)
             Text(
-              failure.localize(l10n),
+              _otpError(failure, l10n),
               textAlign: TextAlign.center,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),

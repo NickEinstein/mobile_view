@@ -21,7 +21,21 @@ class _DeceasedStep extends StatelessWidget {
         showRequired: state.showErrors,
       ),
       onChanged: cubit.deceasedChanged,
-      isLocked: state.isLocked,
+      // The registrar's own state and LGA, while they
+      // are among the options (so a bad location can't block the form).
+      isLocked: (field) =>
+          state.isLocked(field) ||
+          cubit.registrarLocation != null &&
+              switch (field) {
+                DeceasedField.registrationState => data.stateOptions.any(
+                  (o) => o.id == deceased[field],
+                ),
+                DeceasedField.registrationLga =>
+                  data
+                      .lgasOf(deceased[DeceasedField.registrationState])
+                      .any((o) => o.id == deceased[field]),
+                _ => false,
+              },
     );
     bool shown(DeceasedField field) => deceased.applies(field);
 

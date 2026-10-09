@@ -11,6 +11,9 @@ extension FailureL10n on Failure {
     ForbiddenFailure() => l10n.errorForbidden,
     NotFoundFailure() => l10n.errorNotFound,
     ValidationFailure(:final message) => message ?? l10n.errorValidation,
+    RateLimitedFailure(:final retryAfter) => l10n.errorRateLimited(
+      retryAfter.inSeconds < 1 ? 1 : retryAfter.inSeconds,
+    ),
     ServerFailure() => l10n.errorServer,
     CancelledFailure() || UnexpectedFailure() => l10n.errorUnexpected,
   };

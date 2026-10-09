@@ -24,6 +24,7 @@ class _InformantStep extends StatelessWidget {
     final draft = formState.draft!;
     final data = formState.referenceData!;
     final informant = draft.informant;
+    final parentRole = informant.parentRole;
 
     final f = _Fields<InformantField>(
       l10n: l10n,
@@ -34,6 +35,11 @@ class _InformantStep extends StatelessWidget {
         showRequired: formState.showErrors,
       ),
       onChanged: cubit.informantChanged,
+      // A parent informant's details are that parent's (Steps 2 and 3).
+      isLocked: (field) =>
+          parentRole != null && InformantParticulars.fromParent.contains(field),
+      // Rebuilt with the copied values when the relationship changes.
+      keySuffix: parentRole,
     );
     bool shown(InformantField field) => informant.applies(field);
     final idNote = draft.parentsGaveNin
@@ -52,6 +58,16 @@ class _InformantStep extends StatelessWidget {
           l10n.brRelationship,
           data.relationships,
         ),
+        if (parentRole != null)
+          Text(
+            switch (parentRole) {
+              ParentRole.mother => l10n.brInformantIsMother,
+              ParentRole.father => l10n.brInformantIsFather,
+            },
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppPalette.muted),
+          ),
         f.name(InformantField.surname, l10n.brSurname, l10n.brSurnameHint),
         f.name(
           InformantField.firstName,
@@ -124,9 +140,13 @@ class _InformantStep extends StatelessWidget {
           AppSignaturePad(
             key: const ValueKey(InformantField.signature),
             label: l10n.brInformantSignature,
-            hint: l10n.brSignHere,
+            hint: signature != null && isOnServer(signature)
+                ? l10n.brSignatureOnFile
+                : l10n.brSignHere,
             clearTooltip: l10n.brClearSignature,
-            saved: signature == null ? null : FileImage(File(signature)),
+            saved: signature == null || isOnServer(signature)
+                ? null
+                : FileImage(File(signature)),
             onSigned: (png) => unawaited(_saveSignature(context, png)),
             onCleared: () => unawaited(cubit.signatureCleared()),
             errorText: f.errorOf(InformantField.signature),

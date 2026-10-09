@@ -188,8 +188,39 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     return result;
   }
 
-  /// Uploads the child's face, the informant's signature (or face) and
-  /// the documents Step 5 asked for. Names carry no personal data.
+  @override
+  Future<Result<void>> updateQueried(
+    RegistrationDraft draft, {
+    void Function(int sent, int total)? onProgress,
+    Cancellation? cancellation,
+  }) async {
+    final queried = draft.queried;
+    if (queried == null) {
+      throw ArgumentError('Not the correction of a queried record.');
+    }
+    final places = await referenceData(withLgasOf: draft.chosenStates);
+    if (places case Err(:final failure)) return Err(failure);
+    final uploaded = await _uploadFiles(
+      draft,
+      onProgress: onProgress,
+      cancellation: cancellation,
+    );
+    if (uploaded case Err(:final failure)) return Err(failure);
+    return _client.patch(
+      '$_basePath/update',
+      body: registrationUpdateToJson(
+        draft,
+        queried: queried,
+        places: (places as Ok<ReferenceData>).value,
+        uploads: (uploaded as Ok<RegistrationUploads>).value,
+      ),
+      cancellation: cancellation,
+      decode: (_) {},
+    );
+  }
+
+  /// Uploads the draft's files (names carry no personal data). Files still
+  /// in storage are sent by key.
   Future<Result<RegistrationUploads>> _uploadFiles(
     RegistrationDraft draft, {
     void Function(int done, int total)? onProgress,
@@ -206,13 +237,15 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     final documents = {
       for (final type in draft.documentTypes) type: ?draft.documents[type],
     };
-    final total =
-        documents.length +
-        (childFace == null ? 0 : 1) +
-        (identity == null ? 0 : 1);
+    final total = [
+      childFace,
+      identity,
+      for (final file in documents.values) file.path,
+    ].where((path) => path != null && !isOnServer(path)).length;
     var done = 0;
     Future<Result<String?>> send(String? path, String name) async {
       if (path == null) return const Ok(null);
+      if (isOnServer(path)) return Ok(serverKeyOf(path));
       final result = await _upload(
         path,
         name: '$name-$tag${_extension(path)}',

@@ -74,8 +74,11 @@ class _Fields<F extends Enum> {
         items: {for (final o in options) o.id: o.label},
         value: valueOf(field),
         errorText: errorOf(field),
-        // Nothing to choose yet (e.g. no state picked for an LGA).
-        onChanged: options.isEmpty ? null : (value) => onChanged(field, value),
+        // Nothing to choose yet (e.g. no state picked for an LGA), or
+        // locked.
+        onChanged: options.isEmpty || (isLocked?.call(field) ?? false)
+            ? null
+            : (value) => onChanged(field, value),
       );
 }
 

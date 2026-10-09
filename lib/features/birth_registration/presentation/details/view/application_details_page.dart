@@ -4,20 +4,26 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_palette.dart';
 import 'package:vital_reg_mobile/design_system/tokens/spacing.dart';
+import 'package:vital_reg_mobile/design_system/widgets/app_button.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/application_details.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/details/cubit/application_details_cubit.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/application_sections.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/application_status_style.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/query_reason_card.dart';
 import 'package:vital_reg_mobile/l10n/failure_l10n.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
 
-/// "Certificate Details": a submitted application, read-only.
+/// "Certificate Details": a submitted application, read-only. A queried
+/// one also shows the reason and, with [onUpdate], "Update record".
 class ApplicationDetailsPage extends StatelessWidget {
-  const ApplicationDetailsPage({required this.id, super.key});
+  const ApplicationDetailsPage({required this.id, this.onUpdate, super.key});
 
   final String id;
+
+  /// Opens the correction of this queried record (from the router).
+  final VoidCallback? onUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +32,15 @@ class ApplicationDetailsPage extends StatelessWidget {
         GetIt.instance<BirthRegistrationRepository>(),
         id: id,
       )..load().ignore(),
-      child: const ApplicationDetailsView(),
+      child: ApplicationDetailsView(onUpdate: onUpdate),
     );
   }
 }
 
 class ApplicationDetailsView extends StatelessWidget {
-  const ApplicationDetailsView({super.key});
+  const ApplicationDetailsView({this.onUpdate, super.key});
+
+  final VoidCallback? onUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +50,23 @@ class ApplicationDetailsView extends StatelessWidget {
     final details = state.details;
     final referenceData = state.referenceData;
 
+    final onUpdate = this.onUpdate;
+    final canUpdate =
+        onUpdate != null &&
+        details?.summary.status == ApplicationStatus.queried;
     return Scaffold(
       backgroundColor: Colors.white,
+      bottomNavigationBar: canUpdate
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(Spacing.md),
+                child: AppButton(
+                  label: l10n.brUpdateRecord,
+                  onPressed: onUpdate,
+                ),
+              ),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -82,6 +105,10 @@ class ApplicationDetailsView extends StatelessWidget {
                 children: [
                   _Header(details: details),
                   const SizedBox(height: Spacing.md),
+                  if (details.summary.status == ApplicationStatus.queried) ...[
+                    QueryReasonCard(reason: details.queryReason ?? '-'),
+                    const SizedBox(height: Spacing.md),
+                  ],
                   ApplicationSections(
                     referenceData: referenceData,
                     child: details.child,

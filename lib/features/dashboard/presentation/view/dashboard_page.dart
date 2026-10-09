@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
 import 'package:vital_reg_mobile/design_system/icons/app_icons.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_palette.dart';
 import 'package:vital_reg_mobile/design_system/tokens/spacing.dart';
@@ -45,22 +46,29 @@ class DashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: context.read<DashboardCubit>().load,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          Spacing.md,
-          Spacing.sm,
-          Spacing.md,
-          Spacing.lg,
+    final cubit = context.read<DashboardCubit>();
+    // Back from a module: its records may have changed the counts.
+    return ReloadOnReturn(
+      onReturn: () {
+        if (!cubit.isClosed) cubit.load().ignore();
+      },
+      child: RefreshIndicator(
+        onRefresh: cubit.load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.sm,
+            Spacing.md,
+            Spacing.lg,
+          ),
+          children: [
+            _Greeting(name: name, roleLabel: roleLabel),
+            const SizedBox(height: Spacing.md),
+            const _StatGrid(),
+            const SizedBox(height: Spacing.md),
+            const _RegistrationsChart(),
+          ],
         ),
-        children: [
-          _Greeting(name: name, roleLabel: roleLabel),
-          const SizedBox(height: Spacing.md),
-          const _StatGrid(),
-          const SizedBox(height: Spacing.md),
-          const _RegistrationsChart(),
-        ],
       ),
     );
   }

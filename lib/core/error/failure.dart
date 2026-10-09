@@ -51,6 +51,18 @@ final class ServerFailure extends Failure {
   List<Object?> get props => [message, statusCode];
 }
 
+/// HTTP 429: the backend's rate limit. Nothing is wrong; the same request
+/// works again after [retryAfter].
+final class RateLimitedFailure extends Failure {
+  const RateLimitedFailure({required this.retryAfter, String? message})
+    : super(message);
+
+  final Duration retryAfter;
+
+  @override
+  List<Object?> get props => [message, retryAfter];
+}
+
 final class CancelledFailure extends Failure {
   const CancelledFailure();
 }

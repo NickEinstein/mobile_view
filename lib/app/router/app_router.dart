@@ -12,6 +12,7 @@ import 'package:vital_reg_mobile/app/view/module_placeholder_page.dart';
 import 'package:vital_reg_mobile/app/view/splash_page.dart';
 import 'package:vital_reg_mobile/app/view/tab_placeholder_page.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
+import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/adopted_child_repository.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_draft.dart';
 import 'package:vital_reg_mobile/features/adopted_child/presentation/details/view/adoption_details_page.dart';
@@ -19,6 +20,7 @@ import 'package:vital_reg_mobile/features/adopted_child/presentation/form/view/a
 import 'package:vital_reg_mobile/features/adopted_child/presentation/home/view/adopted_child_home_page.dart';
 import 'package:vital_reg_mobile/features/adopted_child/presentation/nin/view/child_nin_page.dart'
     as adoption;
+import 'package:vital_reg_mobile/features/auth/domain/entities/user.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
@@ -29,6 +31,7 @@ import 'package:vital_reg_mobile/features/birth_attestation/presentation/form/vi
 import 'package:vital_reg_mobile/features/birth_attestation/presentation/home/view/birth_attestation_home_page.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/presentation/nin/view/applicant_nin_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/details/view/application_details_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
@@ -84,6 +87,7 @@ GoRouter createRouter({
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     refreshListenable: refreshListenable,
+    observers: [appRouteObserver],
     redirect: (context, state) => resolveRedirect(
       auth: authBloc.state,
       location: state.uri,
@@ -126,7 +130,7 @@ GoRouter createRouter({
                   for (final module in AppModule.values)
                     if (featureFlags.isEnabled(module.feature))
                       if (module == AppModule.birthRegistration)
-                        _birthRegistrationRoute(rootNavigatorKey)
+                        _birthRegistrationRoute(rootNavigatorKey, authBloc)
                       else if (module == AppModule.birthAttestation)
                         _birthAttestationRoute(rootNavigatorKey)
                       else if (module == AppModule.modifications)
@@ -136,11 +140,11 @@ GoRouter createRouter({
                       else if (module == AppModule.reissuance)
                         _reissuanceRoute(rootNavigatorKey)
                       else if (module == AppModule.deathRegistration)
-                        _deathRoute(rootNavigatorKey)
+                        _deathRoute(rootNavigatorKey, authBloc)
                       else if (module == AppModule.surrogacyBirthRegistration)
-                        _surrogacyBirthRoute(rootNavigatorKey)
+                        _surrogacyBirthRoute(rootNavigatorKey, authBloc)
                       else if (module == AppModule.adoptedChildRegistration)
-                        _adoptedChildRoute(rootNavigatorKey)
+                        _adoptedChildRoute(rootNavigatorKey, authBloc)
                       else if (module == AppModule.foreignBirthNotification)
                         _foreignBirthRoute(rootNavigatorKey)
                       else
@@ -179,7 +183,10 @@ GoRouter createRouter({
 
 /// Birth Registration: home, "New Birth Registration" (NIN check), form
 /// (with the fee's payment from age 5), and one application's details.
-GoRoute _birthRegistrationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+GoRoute _birthRegistrationRoute(
+  GlobalKey<NavigatorState> rootNavigatorKey,
+  AuthBloc authBloc,
+) {
   const home = AppRoutes.birthRegistration;
   return GoRoute(
     parentNavigatorKey: rootNavigatorKey,
@@ -206,6 +213,19 @@ GoRoute _birthRegistrationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         builder: (context, state) => RegistrationFormPage(
           onExit: () => context.pop(),
           onPayment: () => context.push<void>(AppRoutes.birthPayment),
+          registrarLocation: _registrarLocation(authBloc.state),
+        ),
+      ),
+      // The correction of a queried record: the form, opened on the
+      // review with the record's details.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthQueriedPattern.substring(home.length + 1),
+        builder: (context, state) => RegistrationFormPage(
+          queriedRecordId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+          onPayment: () => context.push<void>(AppRoutes.birthPayment),
+          registrarLocation: _registrarLocation(authBloc.state),
         ),
       ),
       // The fee for a child of 5 or older, over the form; closing it
@@ -221,12 +241,28 @@ GoRoute _birthRegistrationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.birthApplicationPattern.substring(home.length + 1),
-        builder: (context, state) =>
-            ApplicationDetailsPage(id: state.pathParameters['id']!),
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ApplicationDetailsPage(
+            id: id,
+            // The correction replaces the details, so Back from it returns
+            // to the list, which reloads.
+            onUpdate: () => context.pushReplacement(AppRoutes.birthQueried(id)),
+          );
+        },
       ),
     ],
   );
 }
+
+/// The signed-in registrar's state and LGA, if the backend gave both.
+RegistrarLocation? _registrarLocation(AuthState auth) => switch (auth) {
+  AuthAuthenticated(user: User(:final String stateId, :final String lgaId)) => (
+    stateId: stateId,
+    lgaId: lgaId,
+  ),
+  _ => null,
+};
 
 /// Birth Attestation: payment, the
 /// applicant's NIN (or none), face, then the form.
@@ -248,8 +284,6 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       onResumeAtForm: () => context.push<void>(AppRoutes.birthAttestationForm),
       onOpenApplication: (id) =>
           context.push<void>(AppRoutes.birthAttestationApplication(id)),
-      onUpdateQueried: (id) =>
-          context.push<void>(AppRoutes.birthAttestationQueried(id)),
     ),
     // Each step replaces the last, so Back returns to the home.
     routes: [
@@ -300,7 +334,10 @@ GoRoute _birthAttestationRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
 
 /// Surrogacy Birth Registration: the server creates the application, then
 /// the child's NIN, the payment and the form.
-GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+GoRoute _surrogacyBirthRoute(
+  GlobalKey<NavigatorState> rootNavigatorKey,
+  AuthBloc authBloc,
+) {
   const home = AppRoutes.surrogacyBirth;
   GoRoute step(String path, GoRouterWidgetBuilder builder) => GoRoute(
     parentNavigatorKey: rootNavigatorKey,
@@ -344,7 +381,10 @@ GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       ),
       step(
         AppRoutes.surrogacyBirthForm,
-        (context, state) => SurrogacyFormPage(onExit: () => context.pop()),
+        (context, state) => SurrogacyFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
+          onExit: () => context.pop(),
+        ),
       ),
       step(
         AppRoutes.surrogacyBirthApplicationPattern,
@@ -365,6 +405,7 @@ GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       step(
         AppRoutes.surrogacyBirthQueriedPattern,
         (context, state) => SurrogacyFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
           queriedId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
@@ -375,7 +416,10 @@ GoRoute _surrogacyBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
 
 /// Adopted Child Registration: the server creates the application, then
 /// the child's NIN, the payment and the form.
-GoRoute _adoptedChildRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+GoRoute _adoptedChildRoute(
+  GlobalKey<NavigatorState> rootNavigatorKey,
+  AuthBloc authBloc,
+) {
   const home = AppRoutes.adoptedChild;
   String stagePath(AdoptionStage stage) => switch (stage) {
     AdoptionStage.nin => AppRoutes.adoptedChildNin,
@@ -414,7 +458,10 @@ GoRoute _adoptedChildRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       ),
       step(
         AppRoutes.adoptedChildForm,
-        (context, state) => AdoptionFormPage(onExit: () => context.pop()),
+        (context, state) => AdoptionFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
+          onExit: () => context.pop(),
+        ),
       ),
       step(
         AppRoutes.adoptedChildApplicationPattern,
@@ -431,6 +478,7 @@ GoRoute _adoptedChildRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
       step(
         AppRoutes.adoptedChildQueriedPattern,
         (context, state) => AdoptionFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
           queriedId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),
@@ -497,7 +545,10 @@ GoRoute _foreignBirthRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
 
 /// Death Registration: home, the form, Certificate Details and the
 /// correction of a queried record.
-GoRoute _deathRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
+GoRoute _deathRoute(
+  GlobalKey<NavigatorState> rootNavigatorKey,
+  AuthBloc authBloc,
+) {
   const home = AppRoutes.deathRegistration;
   return GoRoute(
     parentNavigatorKey: rootNavigatorKey,
@@ -505,13 +556,15 @@ GoRoute _deathRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
     builder: (context, state) => DeathRegistrationHomePage(
       onOpenForm: () => context.push<void>(AppRoutes.deathForm),
       onOpenRegistration: (id) => context.push<void>(AppRoutes.deathRecord(id)),
-      onUpdateQueried: (id) => context.push<void>(AppRoutes.deathQueried(id)),
     ),
     routes: [
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.deathForm.substring(home.length + 1),
-        builder: (context, state) => DeathFormPage(onExit: () => context.pop()),
+        builder: (context, state) => DeathFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
+          onExit: () => context.pop(),
+        ),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -528,6 +581,7 @@ GoRoute _deathRoute(GlobalKey<NavigatorState> rootNavigatorKey) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.deathQueriedPattern.substring(home.length + 1),
         builder: (context, state) => DeathFormPage(
+          registrarLocation: _registrarLocation(authBloc.state),
           queriedRecordId: state.pathParameters['id'],
           onExit: () => context.pop(),
         ),

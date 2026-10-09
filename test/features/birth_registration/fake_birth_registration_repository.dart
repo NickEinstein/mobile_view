@@ -38,6 +38,8 @@ class FakeBirthRegistrationRepository implements BirthRegistrationRepository {
   Result<ApplicationDetails>? detailsResult;
   Result<String?> submitResult = const Ok('BR123');
   final List<RegistrationDraft> submitted = [];
+  Result<void> updateResult = const Ok(null);
+  final List<RegistrationDraft> corrected = [];
   ReferenceData reference = const ReferenceData(
     typesOfBirth: [],
     birthOrders: [],
@@ -111,6 +113,16 @@ class FakeBirthRegistrationRepository implements BirthRegistrationRepository {
     await submitGate?.future;
     submitted.add(draft);
     return submitResult;
+  }
+
+  @override
+  Future<Result<void>> updateQueried(
+    RegistrationDraft draft, {
+    void Function(int sent, int total)? onProgress,
+    Cancellation? cancellation,
+  }) async {
+    corrected.add(draft);
+    return updateResult;
   }
 
   @override

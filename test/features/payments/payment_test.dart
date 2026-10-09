@@ -320,6 +320,44 @@ void main() {
     expect(continued, 1);
   });
 
+  testWidgets('a wrong code says so, and the dialog can be closed', (
+    tester,
+  ) async {
+    repository.confirmOtpResult = const Err(
+      NotFoundFailure('Invalid OTP or OTP has already been used'),
+    );
+    await tester.pumpApp(
+      BlocProvider(
+        create: (_) => build()..load().ignore(),
+        child: PaymentView(checkout: _FakeCheckout((_) {}), onPaid: () {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'payer@mail.com');
+    await tester.pump();
+    await tester.tap(find.text('Pay ₦2,100'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '123333');
+    await tester.pump();
+    await tester.tap(find.text('Authorize'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('That code is wrong or has already been used'),
+      findsOneWidget,
+    );
+    expect(
+      find.text("We couldn't find what you were looking for."),
+      findsNothing,
+    );
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('Authorize Transaction'), findsNothing);
+    // Back on the payment page, ready to send a new code.
+    expect(find.text('Pay ₦2,100'), findsOneWidget);
+  });
+
   testWidgets('Enter Reference verifies a reference paid earlier', (
     tester,
   ) async {
