@@ -13,6 +13,13 @@ class OnboardingCubit extends Cubit<OnboardingState> {
   /// Called when the user swipes.
   void pageChanged(int page) => emit(state.copyWith(page: page));
 
+  /// System Back: previous page. On the first page the view lets Back close
+  /// the app instead.
+  void previous() {
+    if (state.page == 0) return;
+    emit(state.copyWith(page: state.page - 1));
+  }
+
   /// Next page, or finish on the last one.
   Future<void> next() async {
     if (state.isLastPage) return finish();
