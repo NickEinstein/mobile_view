@@ -12,6 +12,7 @@ import 'package:vital_reg_mobile/features/dashboard/data/dashboard_repository_im
 import 'package:vital_reg_mobile/features/death_registration/data/death_registration_repository_impl.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_draft.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_form.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/data/foreign_birth_repository_impl.dart';
 import 'package:vital_reg_mobile/features/still_birth/data/still_birth_repository_impl.dart';
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_draft.dart';
 import 'package:vital_reg_mobile/features/still_birth/domain/entities/still_birth_form.dart'
@@ -155,6 +156,37 @@ void main() {
     }
     final first = ok(await repository.details(items.first.id));
     expect(first.summary.status, ApplicationStatus.approved);
+  });
+
+  test('foreign birth', () async {
+    final repository = ForeignBirthRepositoryImpl(
+      client: demoBackend().client,
+      storage: signedInUserStorage(),
+    );
+    ok(await repository.referenceData());
+    ok(await repository.payments.quote());
+    await readsEverything(
+      repository,
+      (id) async => ok(await repository.details(id)),
+    );
+  });
+
+  test('foreign birth opens a record by its number', () async {
+    final backend = demoBackend();
+    final repository = ForeignBirthRepositoryImpl(
+      client: backend.client,
+      storage: signedInUserStorage(),
+    );
+    final row = ok(
+      await repository.applications(status: ApplicationStatus.queried),
+    ).single;
+    final record = ok(await repository.details(row.id));
+
+    expect(backend.paths.last, 'GET /birth-notification/cert/${row.id}');
+    // `/cert` has no status; the list row's stands.
+    expect(record.status, ApplicationStatus.queried);
+    // The correction still has the record's own ids.
+    expect(record.id, 540);
   });
 
   test('adopted child', () async {
