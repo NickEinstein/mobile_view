@@ -22,6 +22,7 @@ import 'package:vital_reg_mobile/features/birth_registration/birth_registration_
 import 'package:vital_reg_mobile/features/certificate_reissuance/certificate_reissuance_module.dart';
 import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/death_registration/death_registration_module.dart';
+import 'package:vital_reg_mobile/features/foreign_birth/foreign_birth_module.dart';
 import 'package:vital_reg_mobile/features/modifications/modifications_module.dart';
 import 'package:vital_reg_mobile/features/onboarding/onboarding_module.dart';
 import 'package:vital_reg_mobile/features/payments/payments_module.dart';
@@ -95,6 +96,7 @@ Future<void> configureDependencies(AppConfig config) async {
   registerStillBirthModule(getIt);
   registerSurrogacyBirthModule(getIt);
   registerAdoptedChildModule(getIt);
+  registerForeignBirthModule(getIt);
   registerCertificateReissuanceModule(getIt);
   registerDeathRegistrationModule(getIt);
   registerOnboardingModule(getIt);
