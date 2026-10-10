@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vital_reg_mobile/app/view/app_drawer.dart';
 import 'package:vital_reg_mobile/app/view/new_registration_sheet.dart';
+import 'package:vital_reg_mobile/core/offline/pending_sends.dart';
 import 'package:vital_reg_mobile/design_system/icons/app_icons.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_palette.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
@@ -11,9 +12,12 @@ import 'package:vital_reg_mobile/l10n/l10n.dart';
 /// Signed-in frame. Each tab keeps its own history; Services opens the
 /// "New registration" sheet instead.
 class AppShell extends StatelessWidget {
-  const AppShell({required this.shell, super.key});
+  const AppShell({required this.shell, this.pendingSends, super.key});
 
   final StatefulNavigationShell shell;
+
+  /// Checked before logging out.
+  final PendingSends? pendingSends;
 
   void _select(BuildContext context, _AppTab tab) {
     final branch = tab.branch;
@@ -52,6 +56,7 @@ class AppShell extends StatelessWidget {
       drawer: AppDrawer(
         onHome: () => _select(context, _AppTab.home),
         onServices: () => _select(context, _AppTab.services),
+        pendingSends: pendingSends,
       ),
       body: shell,
       bottomNavigationBar: _BottomNav(

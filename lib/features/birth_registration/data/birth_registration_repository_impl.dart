@@ -5,9 +5,11 @@ import 'package:dio/dio.dart';
 import 'package:vital_reg_mobile/core/error/failure.dart';
 import 'package:vital_reg_mobile/core/network/api_client.dart';
 import 'package:vital_reg_mobile/core/network/cancellation.dart';
+import 'package:vital_reg_mobile/core/offline/offline_mode.dart';
 import 'package:vital_reg_mobile/core/result/result.dart';
 import 'package:vital_reg_mobile/core/storage/draft_files.dart';
 import 'package:vital_reg_mobile/core/storage/draft_store.dart';
+import 'package:vital_reg_mobile/core/storage/outbox.dart';
 import 'package:vital_reg_mobile/core/storage/user_storage.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/data/dtos/nin_dtos.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/domain/entities/applicant_nin_record.dart';
@@ -17,6 +19,7 @@ import 'package:vital_reg_mobile/features/birth_registration/data/dtos/birth_reg
 import 'package:vital_reg_mobile/features/birth_registration/data/dtos/form_settlements.dart';
 import 'package:vital_reg_mobile/features/birth_registration/data/dtos/option_lists.dart'
     as option_lists;
+import 'package:vital_reg_mobile/features/birth_registration/data/saved_places.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/application_details.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
@@ -32,8 +35,16 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
   BirthRegistrationRepositoryImpl({
     required ApiClient client,
     required UserStorage storage,
+    SavedPlaces? savedPlaces,
+    OfflineMode? offlineMode,
   }) : _client = client,
        _storage = storage,
+       _places = ApiPlaces(
+         client: client,
+         scope: storage.scope,
+         saved: savedPlaces,
+         offlineMode: offlineMode,
+       ),
        payments = GatewayPayments(
          client: client,
          storage: storage,
@@ -54,13 +65,21 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     toJson: (draft) => draft.toJson(),
     files: (draft) => draft.files,
   );
+  late final _outbox = Outbox<RegistrationDraft>(
+    _storage,
+    key: 'birth_registration_outbox',
+    fromJson: RegistrationDraft.fromJson,
+    toJson: (draft) => draft.toJson(),
+    files: (draft) => draft.files,
+  );
   static const _basePath = '/birth-registration';
   DraftFiles get _files => _storage.files;
 
   @override
   final PaymentSource payments;
 
-  late final _places = ApiPlaces(client: _client, scope: _storage.scope);
+  /// With [SavedPlaces], also offline.
+  final ApiPlaces _places;
 
   @override
   Future<Result<ApplicationCounts>> counts() =>
@@ -94,6 +113,19 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     );
     return switch (result) {
       Ok(value: final record?) => Ok(record),
+      Ok() => const Err(NotFoundFailure()),
+      Err(:final failure) => Err(failure),
+    };
+  }
+
+  @override
+  Future<Result<PersonName>> verifyTrackingId(String trackingId) async {
+    final result = await _client.get(
+      '/verify-trackingid/${Uri.encodeComponent(trackingId)}',
+      decode: trackingIdNameFromJson,
+    );
+    return switch (result) {
+      Ok(value: final name?) => Ok(name),
       Ok() => const Err(NotFoundFailure()),
       Err(:final failure) => Err(failure),
     };
@@ -160,23 +192,27 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     RegistrationDraft draft, {
     void Function(int sent, int total)? onProgress,
     Cancellation? cancellation,
+    Map<String, String> uploaded = const {},
+    void Function(String path, String key)? onUploaded,
   }) async {
     // The registration LGA's code goes into the payload.
     final places = await referenceData(withLgasOf: draft.chosenStates);
     if (places case Err(:final failure)) return Err(failure);
-    final uploaded = await _uploadFiles(
+    final uploads = await _uploadFiles(
       draft,
       onProgress: onProgress,
       cancellation: cancellation,
+      uploaded: uploaded,
+      onUploaded: onUploaded,
     );
-    if (uploaded case Err(:final failure)) return Err(failure);
+    if (uploads case Err(:final failure)) return Err(failure);
 
     final result = await _client.post(
       '$_basePath/add',
       body: registrationToJson(
         draft,
         places: (places as Ok<ReferenceData>).value,
-        uploads: (uploaded as Ok<RegistrationUploads>).value,
+        uploads: (uploads as Ok<RegistrationUploads>).value,
       ),
       headers: {'Idempotency-Key': ?draft.submissionKey},
       cancellation: cancellation,
@@ -225,6 +261,8 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     RegistrationDraft draft, {
     void Function(int done, int total)? onProgress,
     Cancellation? cancellation,
+    Map<String, String> uploaded = const {},
+    void Function(String path, String key)? onUploaded,
   }) async {
     final tag =
         draft.submissionKey ?? '${draft.startedOn.millisecondsSinceEpoch}';
@@ -237,21 +275,29 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
     final documents = {
       for (final type in draft.documentTypes) type: ?draft.documents[type],
     };
-    final total = [
-      childFace,
-      identity,
-      for (final file in documents.values) file.path,
-    ].where((path) => path != null && !isOnServer(path)).length;
+    final total =
+        [childFace, identity, for (final file in documents.values) file.path]
+            .where(
+              (path) =>
+                  path != null &&
+                  !isOnServer(path) &&
+                  !uploaded.containsKey(path),
+            )
+            .length;
     var done = 0;
     Future<Result<String?>> send(String? path, String name) async {
       if (path == null) return const Ok(null);
       if (isOnServer(path)) return Ok(serverKeyOf(path));
+      if (uploaded[path] case final key?) return Ok(key);
       final result = await _upload(
         path,
         name: '$name-$tag${_extension(path)}',
         cancellation: cancellation,
       );
-      if (result is Ok) onProgress?.call(++done, total);
+      if (result case Ok(value: final key)) {
+        onUploaded?.call(path, key);
+        onProgress?.call(++done, total);
+      }
       return result;
     }
 
@@ -319,4 +365,44 @@ class BirthRegistrationRepositoryImpl implements BirthRegistrationRepository {
 
   @override
   Future<void> discardDraft() => _drafts.discard();
+
+  /// Added before the draft is forgotten, so a crash in between leaves a
+  /// copy rather than nothing.
+  @override
+  Future<void> saveForLater(RegistrationDraft draft) async {
+    await _outbox.add(draft);
+    await _drafts.forget();
+  }
+
+  @override
+  Future<List<OutboxEntry<RegistrationDraft>>> outbox() => _outbox.entries();
+
+  /// If the entry is gone (e.g. sent meanwhile), the edit is kept as a new
+  /// one; the server reports a duplicate.
+  @override
+  Future<void> replaceInOutbox(String id, RegistrationDraft draft) async {
+    final entry = await _outbox.read(id);
+    if (entry == null) {
+      await _outbox.add(draft);
+      return;
+    }
+    await _outbox.update(
+      entry.copyWith(
+        item: draft,
+        status: OutboxStatus.waiting,
+        message: () => null,
+      ),
+    );
+    final kept = draft.files.toSet();
+    for (final path in entry.item.files) {
+      if (!kept.contains(path)) await _files.delete(path);
+    }
+  }
+
+  @override
+  Future<void> updateOutbox(OutboxEntry<RegistrationDraft> entry) =>
+      _outbox.update(entry);
+
+  @override
+  Future<void> removeFromOutbox(String id) => _outbox.remove(id);
 }

@@ -6,17 +6,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
+import 'package:vital_reg_mobile/core/offline/offline_mode.dart';
+import 'package:vital_reg_mobile/core/result/result.dart';
+import 'package:vital_reg_mobile/core/storage/outbox.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_palette.dart';
 import 'package:vital_reg_mobile/design_system/tokens/spacing.dart';
 import 'package:vital_reg_mobile/design_system/widgets/app_stat_card.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/outbox_sync.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/cubit/applications_cubit.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/outbox/cubit/outbox_cubit.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/application_status_style.dart';
 import 'package:vital_reg_mobile/l10n/failure_l10n.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
 
 part 'application_list.dart';
+part 'offline_switch.dart';
 
 /// Opens another screen and completes when the user comes back.
 typedef OpenScreen = Future<void> Function();
@@ -31,6 +37,10 @@ class BirthRegistrationHomePage extends StatelessWidget {
     required this.onResumeApplication,
     required this.onOpenApplication,
     this.repository,
+    this.offlineMode,
+    this.registrarStateId,
+    this.outboxSync,
+    this.onOpenOutbox,
     super.key,
   });
 
@@ -41,17 +51,52 @@ class BirthRegistrationHomePage extends StatelessWidget {
   /// Defaults to the registered one; tests pass a fake.
   final BirthRegistrationRepository? repository;
 
+  /// The offline switch; without it, none is shown.
+  final OfflineMode? offlineMode;
+
+  /// The signed-in registrar's state, whose lists are downloaded before
+  /// going offline.
+  final String? registrarStateId;
+
+  /// With [onOpenOutbox], shows the applications waiting to be sent.
+  final OutboxSync? outboxSync;
+  final OpenScreen? onOpenOutbox;
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ApplicationsCubit(
-        repository ?? GetIt.instance<BirthRegistrationRepository>(),
-      )..load().ignore(),
+    final repository =
+        this.repository ?? GetIt.instance<BirthRegistrationRepository>();
+    final offlineMode = this.offlineMode;
+    unawaited(offlineMode?.load());
+    final (sync, openOutbox) = (outboxSync, onOpenOutbox);
+    final home = BlocProvider(
+      create: (_) => ApplicationsCubit(repository)..load().ignore(),
       child: BirthRegistrationHomeView(
         onStartApplication: onStartApplication,
         onResumeApplication: onResumeApplication,
         onOpenApplication: onOpenApplication,
+        actions: [
+          if (offlineMode != null)
+            _OfflineSwitch(
+              mode: offlineMode,
+              repository: repository,
+              stateId: registrarStateId,
+            ),
+        ],
+        banner: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (offlineMode != null) _OfflineBanner(mode: offlineMode),
+            if (sync != null && openOutbox != null)
+              _OutboxCard(onOpen: openOutbox),
+          ],
+        ),
       ),
+    );
+    if (sync == null) return home;
+    return BlocProvider(
+      create: (_) => OutboxCubit(repository, sync)..load().ignore(),
+      child: home,
     );
   }
 }
@@ -65,6 +110,7 @@ class BirthRegistrationHomeView extends StatelessWidget {
     this.title,
     this.resumeMessage,
     this.actions,
+    this.banner,
     super.key,
   });
 
@@ -77,6 +123,9 @@ class BirthRegistrationHomeView extends StatelessWidget {
 
   /// Extra app bar buttons, e.g. Surrogacy's saved drafts.
   final List<Widget>? actions;
+
+  /// Shown under the title, e.g. Birth Registration's offline notice.
+  final Widget? banner;
   final OpenScreen onStartApplication;
   final OpenScreen onResumeApplication;
   final OpenApplication onOpenApplication;
@@ -150,6 +199,7 @@ class BirthRegistrationHomeView extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              ?banner,
               const SizedBox(height: Spacing.md),
               const _StatusGrid(),
               const SizedBox(height: Spacing.md),

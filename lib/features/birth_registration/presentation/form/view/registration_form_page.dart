@@ -48,6 +48,8 @@ class RegistrationFormPage extends StatelessWidget {
     required this.onPayment,
     this.registrarLocation,
     this.queriedRecordId,
+    this.outboxId,
+    this.offline = false,
     super.key,
   });
 
@@ -60,6 +62,12 @@ class RegistrationFormPage extends StatelessWidget {
   /// Corrects this queried record instead of starting an application.
   final String? queriedRecordId;
 
+  /// Edits this application saved offline instead.
+  final String? outboxId;
+
+  /// Offline mode is on.
+  final bool offline;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -67,6 +75,8 @@ class RegistrationFormPage extends StatelessWidget {
         GetIt.instance<BirthRegistrationRepository>(),
         registrarLocation: registrarLocation,
         queriedRecordId: queriedRecordId,
+        outboxId: outboxId,
+        offline: offline,
       )..load().ignore(),
       child: RegistrationFormView(onExit: onExit, onPayment: onPayment),
     );
@@ -152,10 +162,17 @@ class RegistrationFormView extends StatelessWidget {
     onExit();
   }
 
+  Future<void> _savedForLater(BuildContext context) async {
+    await _showSavedForLaterDialog(context);
+    onExit();
+  }
+
   void _onSubmitStatus(BuildContext context, RegistrationFormState state) {
     switch (state.submitStatus) {
       case SubmitStatus.submitted:
         unawaited(_submitted(context, state));
+      case SubmitStatus.savedForLater:
+        unawaited(_savedForLater(context));
       case SubmitStatus.failed:
         final l10n = context.l10n;
         ScaffoldMessenger.of(context).showSnackBar(

@@ -292,6 +292,21 @@ List<Option> optionsFromJson(
   ),
 );
 
+/// `GET /verify-trackingid/:id`: `{status, data: {surname, firstname}}`.
+/// Null when no record matches.
+({String surname, String firstName})? trackingIdNameFromJson(Object? json) {
+  final map = _map(json);
+  final status = map?['status'];
+  if (status != true && status != 1) return null;
+  final data = _map(map?['data']);
+  final (surname, firstName) = (
+    _text(data?['surname']) ?? _text(data?['lastname']),
+    _text(data?['firstname']),
+  );
+  if (surname == null || firstName == null) return null;
+  return (surname: surname, firstName: firstName);
+}
+
 typedef StateRow = ({String id, String name, String? code});
 typedef LgaRow = ({String id, String name, String? code, String state});
 typedef CentreRow = ({String id, String name, String lga});

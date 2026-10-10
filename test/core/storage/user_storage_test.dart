@@ -44,10 +44,14 @@ void main() {
   });
 
   group('clearDrafts', () {
-    test("removes the user's drafts and files, keeping payments", () async {
+    test("removes the user's drafts and files, keeping payments and "
+        'settings', () async {
       final paymentKey = UserStorage.paymentKey('attestation_payment');
+      final settingKey = UserStorage.settingKey('offline');
       await storage.write(key: 'birth_registration_draft', value: 'draft');
+      await storage.write(key: 'birth_registration_outbox', value: '["1"]');
       await storage.write(key: paymentKey, value: 'paid reference');
+      await storage.write(key: settingKey, value: 'true');
       final photo = File(
         await storage.files.keepSignature(Uint8List.fromList([1])),
       );
@@ -55,7 +59,9 @@ void main() {
       await storage.clearDrafts();
 
       expect(await storage.read(key: 'birth_registration_draft'), isNull);
+      expect(await storage.read(key: 'birth_registration_outbox'), isNull);
       expect(await storage.read(key: paymentKey), 'paid reference');
+      expect(await storage.read(key: settingKey), 'true');
       expect(photo.existsSync(), isFalse);
     });
 

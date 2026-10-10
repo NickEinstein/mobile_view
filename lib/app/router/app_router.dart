@@ -13,6 +13,8 @@ import 'package:vital_reg_mobile/app/view/splash_page.dart';
 import 'package:vital_reg_mobile/app/view/tab_placeholder_page.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
+import 'package:vital_reg_mobile/core/offline/offline_mode.dart';
+import 'package:vital_reg_mobile/core/offline/pending_sends.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/adopted_child_repository.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_draft.dart';
 import 'package:vital_reg_mobile/features/adopted_child/presentation/details/view/adoption_details_page.dart';
@@ -32,10 +34,12 @@ import 'package:vital_reg_mobile/features/birth_attestation/presentation/home/vi
 import 'package:vital_reg_mobile/features/birth_attestation/presentation/nin/view/applicant_nin_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/outbox_sync.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/details/view/application_details_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/view/registration_form_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/nin_check/view/nin_check_page.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/outbox/view/outbox_page.dart';
 import 'package:vital_reg_mobile/features/certificate_reissuance/domain/entities/reissuance_draft.dart';
 import 'package:vital_reg_mobile/features/certificate_reissuance/domain/entities/reissuance_summary.dart';
 import 'package:vital_reg_mobile/features/certificate_reissuance/domain/reissuance_repository.dart';
@@ -117,7 +121,10 @@ GoRouter createRouter({
       // Signed-in area: tab pages, each with its own history. (Services is
       // a sheet, not a page; see AppShell.)
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AppShell(shell: shell),
+        builder: (context, state, shell) => AppShell(
+          shell: shell,
+          pendingSends: GetIt.instance<PendingSends>(),
+        ),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -196,8 +203,34 @@ GoRoute _birthRegistrationRoute(
       onResumeApplication: () => context.push<void>(AppRoutes.birthForm),
       onOpenApplication: (id) =>
           context.push<void>(AppRoutes.birthApplication(id)),
+      offlineMode: GetIt.instance<OfflineMode>(),
+      registrarStateId: _registrarLocation(authBloc.state)?.stateId,
+      outboxSync: GetIt.instance<OutboxSync>(),
+      onOpenOutbox: () => context.push<void>(AppRoutes.birthOutbox),
     ),
     routes: [
+      // Applications saved offline, and the edit of one of them.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthOutbox.substring(home.length + 1),
+        builder: (context, state) => OutboxPage(
+          repository: GetIt.instance<BirthRegistrationRepository>(),
+          sync: GetIt.instance<OutboxSync>(),
+          onEdit: (id) => context.push<void>(AppRoutes.birthOutboxEdit(id)),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.birthOutboxEditPattern.substring(home.length + 1),
+        builder: (context, state) => RegistrationFormPage(
+          outboxId: state.pathParameters['id'],
+          onExit: () => context.pop(),
+          // The fee can't be taken for a saved application.
+          onPayment: () async {},
+          registrarLocation: _registrarLocation(authBloc.state),
+          offline: GetIt.instance<OfflineMode>().isOn,
+        ),
+      ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.birthNinCheck.substring(home.length + 1),
@@ -205,6 +238,7 @@ GoRoute _birthRegistrationRoute(
         // to the Birth Registration home.
         builder: (context, state) => NinCheckPage(
           onDone: () => context.pushReplacement(AppRoutes.birthForm),
+          offline: GetIt.instance<OfflineMode>().isOn,
         ),
       ),
       GoRoute(
@@ -214,6 +248,7 @@ GoRoute _birthRegistrationRoute(
           onExit: () => context.pop(),
           onPayment: () => context.push<void>(AppRoutes.birthPayment),
           registrarLocation: _registrarLocation(authBloc.state),
+          offline: GetIt.instance<OfflineMode>().isOn,
         ),
       ),
       // The correction of a queried record: the form, opened on the

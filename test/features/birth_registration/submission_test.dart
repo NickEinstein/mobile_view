@@ -210,6 +210,35 @@ void main() {
       return path;
     }
 
+    test(
+      'saved for later, the draft moves to the outbox with its files',
+      () async {
+        final storage = signedInUserStorage();
+        final repository = BirthRegistrationRepositoryImpl(
+          client: demoBackend().client,
+          storage: storage,
+        );
+        final face = await file('face.jpg');
+        final draft = completeDraft(_today).copyWith(
+          submissionKey: 'key-1',
+          child: completeChild().set(ChildField.facePhoto, face),
+        );
+        await repository.saveDraft(draft);
+
+        await repository.saveForLater(draft);
+
+        expect(await repository.loadDraft(), isNull);
+        expect(File(face).existsSync(), isTrue);
+        final entry = (await repository.outbox()).single;
+        expect(entry.item, draft);
+
+        await repository.removeFromOutbox(entry.id);
+
+        expect(await repository.outbox(), isEmpty);
+        expect(File(face).existsSync(), isFalse);
+      },
+    );
+
     test('uploads each file, then sends the registration', () async {
       final backend = demoBackend();
       final repository = BirthRegistrationRepositoryImpl(
@@ -250,10 +279,12 @@ void main() {
         }),
       );
       final progress = <int>[];
+      final keys = <String, String>{};
 
       final result = await repository.submit(
         draft,
         onProgress: (sent, total) => progress.add(sent),
+        onUploaded: (path, key) => keys[path] = key,
       );
 
       expect(result, isA<Ok<String?>>());
@@ -263,6 +294,28 @@ void main() {
         hasLength(4),
       );
       expect(backend.paths.last, 'POST /birth-registration/add');
+      expect(keys.keys, unorderedEquals(draft.files));
+
+      // A retry sends the uploaded files by key.
+      backend.paths.clear();
+      await repository.submit(draft, uploaded: keys);
+      expect(backend.paths, ['POST /birth-registration/add']);
+    });
+
+    test('a tracking ID gives its name, or none', () async {
+      final repository = BirthRegistrationRepositoryImpl(
+        client: demoBackend().client,
+        storage: signedInUserStorage(),
+      );
+
+      expect(ok(await repository.verifyTrackingId('ABCDEFGHIJ12345')), (
+        surname: 'Ogunlade',
+        firstName: 'Bolaji',
+      ));
+      expect(
+        await repository.verifyTrackingId('000000000000000'),
+        isA<Err<Object?>>(),
+      );
     });
   });
 
@@ -318,6 +371,27 @@ void main() {
         expect(cubit.state.trackingId, 'BR123');
         expect(repository.submitted.single.submissionKey, 'key-1');
         expect(repository.draft, isNull);
+      },
+    );
+
+    blocTest<RegistrationFormCubit, RegistrationFormState>(
+      'offline, the application goes to the outbox, not the server',
+      build: () => RegistrationFormCubit(
+        repository,
+        offline: true,
+        now: () => _today,
+        newSubmissionKey: () => 'key-1',
+      ),
+      act: (cubit) async {
+        await cubit.load();
+        cubit.declarationChanged(declared: true);
+        await cubit.submit();
+      },
+      verify: (cubit) {
+        expect(cubit.state.submitStatus, SubmitStatus.savedForLater);
+        expect(repository.submitted, isEmpty);
+        expect(repository.draft, isNull);
+        expect(repository.outboxEntries.single.item.submissionKey, 'key-1');
       },
     );
 

@@ -10,6 +10,7 @@ import 'package:vital_reg_mobile/core/network/dio_factory.dart';
 import 'package:vital_reg_mobile/core/observability/app_logger.dart';
 import 'package:vital_reg_mobile/core/observability/crash_reporter.dart';
 import 'package:vital_reg_mobile/core/observability/sentry_crash_reporter.dart';
+import 'package:vital_reg_mobile/core/offline/offline_mode.dart';
 import 'package:vital_reg_mobile/core/session/device_id.dart';
 import 'package:vital_reg_mobile/core/session/session_manager.dart';
 import 'package:vital_reg_mobile/core/session/token_storage.dart';
@@ -19,6 +20,7 @@ import 'package:vital_reg_mobile/features/adopted_child/adopted_child_module.dar
 import 'package:vital_reg_mobile/features/auth/auth_module.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/birth_attestation_module.dart';
 import 'package:vital_reg_mobile/features/birth_registration/birth_registration_module.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/outbox_sync.dart';
 import 'package:vital_reg_mobile/features/certificate_reissuance/certificate_reissuance_module.dart';
 import 'package:vital_reg_mobile/features/dashboard/dashboard_module.dart';
 import 'package:vital_reg_mobile/features/death_registration/death_registration_module.dart';
@@ -59,6 +61,7 @@ Future<void> configureDependencies(AppConfig config) async {
     dio.interceptors.insert(0, FakeBackendInterceptor());
   }
 
+  final userStorage = UserStorage(secureStorage, UserScope());
   getIt
     ..registerSingleton<AppConfig>(config)
     ..registerSingleton<AppLogger>(logger)
@@ -68,7 +71,8 @@ Future<void> configureDependencies(AppConfig config) async {
     )
     ..registerSingleton<FlutterSecureStorage>(secureStorage)
     // Drafts and payment references, per user (registrars share devices).
-    ..registerSingleton<UserStorage>(UserStorage(secureStorage, UserScope()))
+    ..registerSingleton<UserStorage>(userStorage)
+    ..registerSingleton<OfflineMode>(OfflineMode(userStorage))
     // Never cleared: the backend allows each account one device.
     ..registerSingleton<DeviceId>(
       DeviceId(secureStorage, override: config.deviceIdOverride),
@@ -100,4 +104,7 @@ Future<void> configureDependencies(AppConfig config) async {
   registerCertificateReissuanceModule(getIt);
   registerDeathRegistrationModule(getIt);
   registerOnboardingModule(getIt);
+
+  // Sends offline registrations in the background.
+  getIt<OutboxSync>();
 }

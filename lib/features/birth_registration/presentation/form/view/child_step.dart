@@ -94,7 +94,11 @@ class _ChildStep extends StatelessWidget {
         value: child.dateOfBirth,
         firstDate: DateTime(today.year - ChildParticulars.maxAgeYears),
         lastDate: today,
-        errorText: error(ChildField.dateOfBirth),
+        errorText:
+            error(ChildField.dateOfBirth) ??
+            (cubit.savesOnDevice && !state.draft!.isPaidFor(today)
+                ? l10n.brOfflineFeeBlocked
+                : null),
         onChanged: (date) => cubit.childChanged(
           ChildField.dateOfBirth,
           DateTime(date.year, date.month, date.day).toIso8601String(),

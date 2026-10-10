@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:vital_reg_mobile/core/error/failure.dart';
 import 'package:vital_reg_mobile/core/network/cancellation.dart';
 import 'package:vital_reg_mobile/core/result/result.dart';
+import 'package:vital_reg_mobile/core/storage/outbox.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/domain/entities/applicant_nin_record.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/birth_registration_repository.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/application_details.dart';
@@ -65,7 +66,10 @@ class FakeBirthRegistrationRepository implements BirthRegistrationRepository {
   Future<bool> hasResumableDraft() async => draft?.childHasNin != null;
 
   @override
-  Future<Result<ApplicantNinRecord>> verifyNin(String nin) async => ninResult;
+  Future<Result<ApplicantNinRecord>> verifyNin(String nin) async {
+    checkedNins.add(nin);
+    return ninResult;
+  }
 
   @override
   final FakePaymentSource payments = FakePaymentSource();
@@ -96,8 +100,62 @@ class FakeBirthRegistrationRepository implements BirthRegistrationRepository {
   Future<String> keepSignature(Uint8List png, {String? replacing}) async =>
       'signature.png';
 
+  final List<String> deletedFiles = [];
+
   @override
-  Future<void> deleteFile(String path) async {}
+  Future<void> deleteFile(String path) async => deletedFiles.add(path);
+
+  final List<OutboxEntry<RegistrationDraft>> outboxEntries = [];
+
+  @override
+  Future<void> saveForLater(RegistrationDraft draft) async {
+    outboxEntries.add(
+      OutboxEntry(
+        id: 'local-${outboxEntries.length + 1}',
+        savedAt: DateTime(2026),
+        item: draft,
+      ),
+    );
+    this.draft = null;
+  }
+
+  @override
+  Future<List<OutboxEntry<RegistrationDraft>>> outbox() async =>
+      List.of(outboxEntries);
+
+  @override
+  Future<void> replaceInOutbox(String id, RegistrationDraft draft) async {
+    final index = outboxEntries.indexWhere((e) => e.id == id);
+    outboxEntries[index] = outboxEntries[index].copyWith(
+      item: draft,
+      status: OutboxStatus.waiting,
+      message: () => null,
+    );
+  }
+
+  @override
+  Future<void> updateOutbox(OutboxEntry<RegistrationDraft> entry) async {
+    final index = outboxEntries.indexWhere((e) => e.id == entry.id);
+    if (index >= 0) outboxEntries[index] = entry;
+  }
+
+  /// Answers to tracking ID checks; Ogunlade Bolaji by default.
+  Result<PersonName> trackingIdResult = const Ok((
+    surname: 'Ogunlade',
+    firstName: 'Bolaji',
+  ));
+  final List<String> checkedNins = [];
+  final List<String> checkedTrackingIds = [];
+
+  @override
+  Future<Result<PersonName>> verifyTrackingId(String trackingId) async {
+    checkedTrackingIds.add(trackingId);
+    return trackingIdResult;
+  }
+
+  @override
+  Future<void> removeFromOutbox(String id) async =>
+      outboxEntries.removeWhere((entry) => entry.id == id);
 
   @override
   Future<String> keepDocument(String pickedPath, {String? replacing}) async =>
@@ -108,12 +166,21 @@ class FakeBirthRegistrationRepository implements BirthRegistrationRepository {
     RegistrationDraft draft, {
     void Function(int sent, int total)? onProgress,
     Cancellation? cancellation,
+    Map<String, String> uploaded = const {},
+    void Function(String path, String key)? onUploaded,
   }) async {
     submitCancellation = cancellation;
     await submitGate?.future;
     submitted.add(draft);
+    submittedWithUploads.add(uploaded);
+    for (final path in draft.files) {
+      if (!uploaded.containsKey(path)) onUploaded?.call(path, 'key/$path');
+    }
     return submitResult;
   }
+
+  /// What each submit was told was already uploaded.
+  final List<Map<String, String>> submittedWithUploads = [];
 
   @override
   Future<Result<void>> updateQueried(
