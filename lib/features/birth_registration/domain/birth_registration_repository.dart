@@ -50,6 +50,13 @@ abstract interface class BirthRegistrationRepository
     Cancellation? cancellation,
   });
 
+  /// Sends a queried record's correction; only replaced files are uploaded.
+  Future<Result<void>> updateQueried(
+    RegistrationDraft draft, {
+    void Function(int sent, int total)? onProgress,
+    Cancellation? cancellation,
+  });
+
   /// Deletes a photo, signature or document the draft no longer uses.
   Future<void> deleteFile(String path);
 }

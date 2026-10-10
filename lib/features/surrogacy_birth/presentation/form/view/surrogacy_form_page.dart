@@ -19,6 +19,8 @@ import 'package:vital_reg_mobile/design_system/widgets/app_text_field.dart';
 import 'package:vital_reg_mobile/design_system/widgets/form/app_form_layout.dart';
 import 'package:vital_reg_mobile/design_system/widgets/form/app_upload_tile.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reference_data.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/features/surrogacy_birth/domain/entities/surrogacy_form.dart';
 import 'package:vital_reg_mobile/features/surrogacy_birth/domain/surrogacy_birth_repository.dart';
@@ -29,21 +31,22 @@ import 'package:vital_reg_mobile/l10n/l10n.dart';
 
 part 'child_step.dart';
 part 'documents_step.dart';
-part 'informant_step.dart';
-part 'review_step.dart';
-part 'submitted_dialog.dart';
 part 'face_field.dart';
 part 'form_fields.dart';
+part 'informant_step.dart';
 part 'nin_field.dart';
 part 'parent_step.dart';
-part 'surrogate_mother_step.dart';
+part 'review_step.dart';
+part 'submitted_dialog.dart';
 part 'surrogacy_step.dart';
+part 'surrogate_mother_step.dart';
 
 /// The eight-step Surrogacy Birth Registration form. [onExit] (from the
 /// router) leaves it; progress is already saved.
 class SurrogacyFormPage extends StatelessWidget {
   const SurrogacyFormPage({
     required this.onExit,
+    this.registrarLocation,
     this.queriedId,
     this.repository,
     super.key,
@@ -54,6 +57,10 @@ class SurrogacyFormPage extends StatelessWidget {
   /// Corrects this queried application instead of the one on the device.
   final String? queriedId;
 
+  /// The signed-in registrar's state and LGA (from the router), which the
+  /// registration state and LGA are fixed to.
+  final RegistrarLocation? registrarLocation;
+
   /// Defaults to the registered one; tests pass a fake.
   final SurrogacyBirthRepository? repository;
 
@@ -63,6 +70,7 @@ class SurrogacyFormPage extends StatelessWidget {
       create: (_) => SurrogacyFormCubit(
         repository ?? GetIt.instance<SurrogacyBirthRepository>(),
         queriedId: queriedId,
+        registrarLocation: registrarLocation,
       )..load().ignore(),
       child: SurrogacyFormView(onExit: onExit),
     );

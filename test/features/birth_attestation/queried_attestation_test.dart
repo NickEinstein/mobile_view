@@ -170,14 +170,12 @@ void main() {
   group('home', () {
     late FakeBirthAttestationRepository repository;
     late List<String> opened;
-    late List<String> updated;
 
     setUp(() {
       repository = FakeBirthAttestationRepository()
         ..items = [_queriedSummary]
         ..detailsResult = Ok(queried);
       opened = [];
-      updated = [];
     });
 
     Future<void> pumpHome(WidgetTester tester) async {
@@ -192,38 +190,20 @@ void main() {
           onResumeAtFace: () async {},
           onResumeAtForm: () async {},
           onOpenApplication: (id) async => opened.add(id),
-          onUpdateQueried: (id) async => updated.add(id),
         ),
       );
       await tester.pumpAndSettle();
     }
 
-    testWidgets('a queried application shows the Queried Record dialog', (
+    testWidgets('a queried application opens its details, no dialog', (
       tester,
     ) async {
       await pumpHome(tester);
       await tester.tap(find.text('Michael Lee'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Queried Record'), findsOneWidget);
-      expect(find.textContaining('Wrong document uploaded'), findsOneWidget);
-      expect(find.textContaining('FA30087677'), findsWidgets);
-
-      await tester.tap(find.text('Update'));
-      await tester.pumpAndSettle();
-      expect(updated, ['queried-0']);
-      expect(opened, isEmpty);
-    });
-
-    testWidgets('Cancel closes the dialog without updating', (tester) async {
-      await pumpHome(tester);
-      await tester.tap(find.text('Michael Lee'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-
+      expect(opened, ['queried-0']);
       expect(find.text('Queried Record'), findsNothing);
-      expect(updated, isEmpty);
     });
 
     testWidgets('other applications open their details', (tester) async {

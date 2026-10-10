@@ -1,12 +1,10 @@
 import 'package:vital_reg_mobile/core/network/json.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/domain/entities/applicant_nin_record.dart';
 
-/// `GET /verify-nin/{nin}`:
-/// `{"status": 1, "lastname", "firstname", "middlename", "dob": "DD-MM-YYYY",
-/// "gender": "m" | "f", "phone", "state_orgin", "lga_orgin"}`.
-/// Returns null when the service found no record (`status` isn't 1).
+/// `GET /verify-nin/{nin}`; null when there is no record (`status` isn't
+/// 1).
 ApplicantNinRecord? ninRecordFromJson(Object? json, {required String nin}) {
-  final map = json.asJsonMap();
+  final map = _nimc(json);
   if (map['status'] != 1) return null;
   return ApplicantNinRecord(
     nin: nin,
@@ -29,7 +27,16 @@ ApplicantNinRecord? ninRecordFromJson(Object? json, {required String nin}) {
 /// The NIN record's `photo` (base64), which the face service matches
 /// against. Null when there is none.
 String? ninPhotoFromJson(Object? json) =>
-    _blankToNull(json.asJsonMap().optionalString('photo'));
+    _blankToNull(_nimc(json).optionalString('photo'));
+
+/// The record under `nimc` (or the reply itself, without one).
+JsonMap _nimc(Object? json) {
+  final map = json.asJsonMap();
+  return switch (map['nimc']) {
+    final JsonMap nimc => nimc,
+    _ => map,
+  };
+}
 
 String? _blankToNull(String? value) =>
     value == null || value.trim().isEmpty ? null : value.trim();

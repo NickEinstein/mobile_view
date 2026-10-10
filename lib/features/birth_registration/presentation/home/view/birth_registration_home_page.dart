@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
 import 'package:vital_reg_mobile/design_system/tokens/app_palette.dart';
 import 'package:vital_reg_mobile/design_system/tokens/spacing.dart';
 import 'package:vital_reg_mobile/design_system/widgets/app_stat_card.dart';
@@ -23,13 +24,13 @@ typedef OpenScreen = Future<void> Function();
 /// Opens one application's details.
 typedef OpenApplication = Future<void> Function(String id);
 
-/// Birth Registration home. Navigation comes from the router, so this
-/// feature doesn't depend on app route paths.
+/// Birth Registration home; navigation comes from the router.
 class BirthRegistrationHomePage extends StatelessWidget {
   const BirthRegistrationHomePage({
     required this.onStartApplication,
     required this.onResumeApplication,
     required this.onOpenApplication,
+    this.repository,
     super.key,
   });
 
@@ -37,12 +38,15 @@ class BirthRegistrationHomePage extends StatelessWidget {
   final OpenScreen onResumeApplication;
   final OpenApplication onOpenApplication;
 
+  /// Defaults to the registered one; tests pass a fake.
+  final BirthRegistrationRepository? repository;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          ApplicationsCubit(GetIt.instance<BirthRegistrationRepository>())
-            ..load().ignore(),
+      create: (_) => ApplicationsCubit(
+        repository ?? GetIt.instance<BirthRegistrationRepository>(),
+      )..load().ignore(),
       child: BirthRegistrationHomeView(
         onStartApplication: onStartApplication,
         onResumeApplication: onResumeApplication,
@@ -111,44 +115,49 @@ class BirthRegistrationHomeView extends StatelessWidget {
         await onStartApplication();
       }
     }
-    // Back from the form: counts may have changed.
-    if (!cubit.isClosed) await cubit.load();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    final cubit = context.read<ApplicationsCubit>();
+    // Back from a form or details page: counts may have changed.
+    return ReloadOnReturn(
+      onReturn: () {
+        if (!cubit.isClosed) cubit.load().ignore();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        actions: actions,
-      ),
-      body: RefreshIndicator(
-        onRefresh: context.read<ApplicationsCubit>().load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.md,
-            0,
-            Spacing.md,
-            Spacing.lg,
-          ),
-          children: [
-            Text(
-              title ?? l10n.moduleBirthRegistration,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppPalette.inkStrong,
-                fontWeight: FontWeight.w600,
-              ),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          actions: actions,
+        ),
+        body: RefreshIndicator(
+          onRefresh: context.read<ApplicationsCubit>().load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Spacing.md,
+              0,
+              Spacing.md,
+              Spacing.lg,
             ),
-            const SizedBox(height: Spacing.md),
-            const _StatusGrid(),
-            const SizedBox(height: Spacing.md),
-            _SearchRow(onNew: () => unawaited(_newApplication(context))),
-            const SizedBox(height: Spacing.md),
-            _ApplicationList(onOpen: onOpenApplication),
-          ],
+            children: [
+              Text(
+                title ?? l10n.moduleBirthRegistration,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppPalette.inkStrong,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: Spacing.md),
+              const _StatusGrid(),
+              const SizedBox(height: Spacing.md),
+              _SearchRow(onNew: () => unawaited(_newApplication(context))),
+              const SizedBox(height: Spacing.md),
+              _ApplicationList(onOpen: onOpenApplication),
+            ],
+          ),
         ),
       ),
     );

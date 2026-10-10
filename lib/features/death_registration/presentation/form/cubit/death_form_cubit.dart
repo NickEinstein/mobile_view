@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vital_reg_mobile/core/error/failure.dart';
 import 'package:vital_reg_mobile/core/network/cancellation.dart';
 import 'package:vital_reg_mobile/core/result/result.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/death_registration_repository.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_draft.dart';
@@ -20,6 +22,7 @@ part 'death_form_state.dart';
 class DeathFormCubit extends Cubit<DeathFormState> {
   DeathFormCubit(
     this._repository, {
+    this.registrarLocation,
     this.queriedRecordId,
     DateTime Function()? now,
     String Function()? newSubmissionKey,
@@ -29,6 +32,29 @@ class DeathFormCubit extends Cubit<DeathFormState> {
 
   final DeathRegistrationRepository _repository;
   final String? queriedRecordId;
+
+  /// The signed-in registrar's state and LGA. The
+  /// registration state and LGA are fixed to them.
+  final RegistrarLocation? registrarLocation;
+
+  DeathDraft _located(DeathDraft draft) {
+    final location = registrarLocation;
+    if (location == null) return draft;
+    var deceased = draft.deceased;
+    if (deceased[DeceasedField.registrationState] != location.stateId) {
+      deceased = deceased.set(
+        DeceasedField.registrationState,
+        location.stateId,
+      );
+    }
+    if (deceased[DeceasedField.registrationLga] != location.lgaId) {
+      deceased = deceased.set(DeceasedField.registrationLga, location.lgaId);
+    }
+    return deceased == draft.deceased
+        ? draft
+        : draft.copyWith(deceased: deceased);
+  }
+
   final DateTime Function() _now;
   final String Function() _newSubmissionKey;
 
@@ -66,7 +92,12 @@ class DeathFormCubit extends Cubit<DeathFormState> {
     if (isClosed) return;
     switch (reference) {
       case Ok(value: final referenceData):
-        final loaded = draft ?? DeathDraft(startedOn: today);
+        final loaded = _located(draft ?? DeathDraft(startedOn: today));
+        // A new draft is saved with its first answer.
+        if (draft != null && loaded != draft) {
+          await _repository.saveDraft(loaded);
+          if (isClosed) return;
+        }
         emit(
           state.copyWith(
             status: FormStatus.ready,
@@ -93,8 +124,9 @@ class DeathFormCubit extends Cubit<DeathFormState> {
     if (isClosed) return;
     switch ((record, reference)) {
       case (Ok(value: final record), Ok(value: final referenceData)):
-        final draft = record.toQueriedDraft();
-        _statesWithLgas = draft.chosenStates;
+        final original = record.toQueriedDraft();
+        _statesWithLgas = original.chosenStates;
+        final draft = _located(original);
         emit(
           state.copyWith(
             status: FormStatus.ready,
@@ -102,6 +134,8 @@ class DeathFormCubit extends Cubit<DeathFormState> {
             draft: draft,
           ),
         );
+        // The registrar's state, if the record had another.
+        unawaited(_loadLgas(draft));
       case (Err(:final failure), _) || (_, Err(:final failure)):
         emit(state.copyWith(status: FormStatus.failure, failure: failure));
     }

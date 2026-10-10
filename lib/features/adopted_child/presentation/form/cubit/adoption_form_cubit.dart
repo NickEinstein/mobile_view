@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
@@ -10,6 +9,8 @@ import 'package:vital_reg_mobile/features/adopted_child/domain/adopted_child_rep
 import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_draft.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_form.dart';
 import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption_reference_data.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 
 part 'adoption_form_state.dart';
@@ -19,6 +20,7 @@ part 'adoption_form_state.dart';
 class AdoptionFormCubit extends Cubit<AdoptionFormState> {
   AdoptionFormCubit(
     this._repository, {
+    this.registrarLocation,
     this.queriedId,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now,
@@ -30,6 +32,23 @@ class AdoptionFormCubit extends Cubit<AdoptionFormState> {
   /// Set when correcting a queried application; kept in memory and resent
   /// whole.
   final String? queriedId;
+
+  /// The signed-in registrar's state and LGA. The
+  /// registration state and LGA are fixed to them.
+  final RegistrarLocation? registrarLocation;
+
+  AdoptionDraft _located(AdoptionDraft draft) {
+    final location = registrarLocation;
+    if (location == null) return draft;
+    var child = draft.child;
+    if (child[ChildField.registrationState] != location.stateId) {
+      child = child.set(ChildField.registrationState, location.stateId);
+    }
+    if (child[ChildField.registrationLga] != location.lgaId) {
+      child = child.set(ChildField.registrationLga, location.lgaId);
+    }
+    return child == draft.child ? draft : draft.copyWith(child: child);
+  }
 
   bool get isQueried => queriedId != null;
 
@@ -79,6 +98,12 @@ class AdoptionFormCubit extends Cubit<AdoptionFormState> {
         return;
       }
       draft = draft.copyWith(paymentReference: payment.reference);
+      await _repository.saveDraft(draft);
+      if (isClosed) return;
+    }
+    final located = _located(draft);
+    if (located != draft) {
+      draft = located;
       await _repository.saveDraft(draft);
       if (isClosed) return;
     }
@@ -145,10 +170,12 @@ class AdoptionFormCubit extends Cubit<AdoptionFormState> {
             status: FormStatus.ready,
             referenceData: data,
             // Opens on the review, to see what needs correcting.
-            draft: record.draft.copyWith(step: AdoptionStep.review),
+            draft: _located(record.draft).copyWith(step: AdoptionStep.review),
             queryReason: record.remarks,
           ),
         );
+        // The registrar's state, if the record had another.
+        unawaited(_loadLgas(state.draft!));
       case (Err(:final failure), _) || (_, Err(:final failure)):
         _fail(failure);
     }

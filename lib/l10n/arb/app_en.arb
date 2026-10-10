@@ -191,6 +191,14 @@
   "brExitApplication": "Exit Application",
   "brExitTitle": "Exit Application?",
   "brExitMessage": "Your progress has been saved. If you exit now, you can continue your application from where you left off when you return. Do you still wish to exit?",
+  "brExitCorrectionMessage": "Your changes to this queried record will be lost. Do you still wish to exit?",
+  "brQueryReasonTitle": "Reason for query",
+  "brUpdateRecord": "Update record",
+  "brInformantIsMother": "Filled in from the mother's details. To change them, go back to Particulars of Mother.",
+  "brInformantIsFather": "Filled in from the father's details. To change them, go back to Particulars of Father.",
+  "brSignatureOnFile": "Signature on file. Sign here only to replace it.",
+  "brCorrectionSubmittedTitle": "Record Successfully Updated",
+  "brCorrectionSubmittedMessage": "The corrected record has been sent for approval.",
   "brLoadFailed": "Couldn't load the form.",
   "brSurname": "Surname",
   "brSurnameHint": "Enter surname",
@@ -450,6 +458,8 @@
     }
   },
   "baOtpFieldLabel": "One-time code",
+  "baOtpInvalid": "That code is wrong or has already been used. Check it, or tap Resend OTP for a new one.",
+  "baOtpClose": "Close",
   "baAuthorize": "Authorize",
   "baNewTitle": "New Birth Attestation",
   "baHasNinQuestion": "Does the applicant have a National Identification Number (NIN)?",
@@ -636,6 +646,12 @@
   "errorForbidden": "You don't have permission to do that.",
   "errorNotFound": "We couldn't find what you were looking for.",
   "errorValidation": "Some details are invalid. Please check and try again.",
+  "errorRateLimited": "Too many requests right now. Please wait {seconds, plural, =1{a second} other{{seconds} seconds}} and try again.",
+  "@errorRateLimited": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
   "errorServer": "Something went wrong on our side. Please try again later.",
   "errorUnexpected": "Something unexpected happened. Please try again.",
   "crTitle": "Certificate Reissuance",

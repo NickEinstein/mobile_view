@@ -335,6 +335,41 @@ void main() {
         RegistrationFormCubit(repository, now: () => _today);
 
     blocTest<RegistrationFormCubit, RegistrationFormState>(
+      "the registration state and LGA are the registrar's",
+      setUp: () => repository.draft = RegistrationDraft(
+        startedOn: _today,
+        child: const ChildParticulars({
+          ChildField.registrationState: '1',
+          ChildField.registrationLga: '2',
+          ChildField.registrationCenter: '3',
+        }),
+      ),
+      build: () => RegistrationFormCubit(
+        repository,
+        registrarLocation: (stateId: '19', lgaId: '249'),
+        now: () => _today,
+      ),
+      act: (cubit) => cubit.load(),
+      verify: (cubit) {
+        final child = cubit.state.draft!.child;
+        expect(child[ChildField.registrationState], '19');
+        expect(child[ChildField.registrationLga], '249');
+        // The old centre belonged to the old LGA.
+        expect(child[ChildField.registrationCenter], isNull);
+        expect(repository.draft?.child, child);
+      },
+    );
+
+    test('locatedAt keeps the centre when the LGA is already right', () {
+      const child = ChildParticulars({
+        ChildField.registrationState: '19',
+        ChildField.registrationLga: '249',
+        ChildField.registrationCenter: '1723',
+      });
+      expect(child.locatedAt((stateId: '19', lgaId: '249')), child);
+    });
+
+    blocTest<RegistrationFormCubit, RegistrationFormState>(
       'an incomplete Step 1 shows errors instead of moving on',
       build: build,
       act: (cubit) async {

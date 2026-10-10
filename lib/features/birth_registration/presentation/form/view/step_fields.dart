@@ -7,9 +7,21 @@ class _Fields<F extends Enum> {
     required this.valueOf,
     required this.errorOf,
     required this.onChanged,
+    this.isLocked,
+    this.keySuffix,
   });
 
   final AppLocalizations l10n;
+
+  /// Fields shown but not editable (e.g. a parent informant's name).
+  final bool Function(F field)? isLocked;
+
+  /// Changing it rebuilds the text fields with their current values, for
+  /// values set other than by typing (e.g. copied from a parent).
+  final Object? keySuffix;
+
+  bool _locked(F field) => isLocked?.call(field) ?? false;
+  Key _key(F field) => ValueKey((field, keySuffix));
   final String? Function(F field) valueOf;
 
   /// Localized error to show now, if any.
@@ -25,7 +37,8 @@ class _Fields<F extends Enum> {
     List<TextInputFormatter>? inputFormatters,
     TextCapitalization textCapitalization = TextCapitalization.words,
   }) => AppTextField(
-    key: ValueKey(field),
+    key: _key(field),
+    enabled: !_locked(field),
     label: label,
     optionalLabel: note,
     hintText: hint,
@@ -76,7 +89,7 @@ class _Fields<F extends Enum> {
 
   Widget select(F field, String label, List<Option> options, {String? note}) =>
       AppSelectField<String>(
-        key: ValueKey(field),
+        key: _key(field),
         label: label,
         optionalLabel: note,
         hint: l10n.brSelectOption,
@@ -84,18 +97,20 @@ class _Fields<F extends Enum> {
         value: valueOf(field),
         errorText: errorOf(field),
         // Nothing to choose yet (e.g. no state picked for an LGA).
-        onChanged: options.isEmpty ? null : (value) => onChanged(field, value),
+        onChanged: options.isEmpty || _locked(field)
+            ? null
+            : (value) => onChanged(field, value),
       );
 
   /// "Is it the same as mother's? ○ Yes ○ No".
   Widget yesNo(F field, String label) => AppRadioGroup<String>(
-    key: ValueKey(field),
+    key: _key(field),
     label: label,
     inline: true,
     options: {answerYes: l10n.yes, answerNo: l10n.no},
     value: valueOf(field),
     errorText: errorOf(field),
-    onChanged: (value) => onChanged(field, value),
+    onChanged: _locked(field) ? null : (value) => onChanged(field, value),
   );
 }
 

@@ -10,6 +10,8 @@ final class UserDto {
     required this.fullName,
     required this.role,
     required this.login,
+    this.stateId,
+    this.lgaId,
   });
 
   /// The `user` object of the backend's sign-in response. Null when the
@@ -32,11 +34,18 @@ final class UserDto {
       text('First_Name') ?? text('Firstname'),
       text('Last_Name') ?? text('Surname'),
     ].nonNulls.join(' ');
+    String? optionalId(String key) => switch (map[key]) {
+      final int value => '$value',
+      final String value when value.trim().isNotEmpty => value.trim(),
+      _ => null,
+    };
     return UserDto(
       id: '$id',
       fullName: name.isEmpty ? login : name,
       role: role,
       login: login,
+      stateId: optionalId('State_ID'),
+      lgaId: optionalId('LGA_ID'),
     );
   }
 
@@ -51,6 +60,9 @@ final class UserDto {
       fullName: map.requireString('fullName'),
       role: role,
       login: map.requireString('login'),
+      // Absent from copies saved before they were kept.
+      stateId: map['stateId'] as String?,
+      lgaId: map['lgaId'] as String?,
     );
   }
 
@@ -62,12 +74,24 @@ final class UserDto {
   /// phone). Sign-out sends it back.
   final String login;
 
+  /// The account's `State_ID` and `LGA_ID`.
+  final String? stateId;
+  final String? lgaId;
+
   JsonMap toJson() => {
     'id': id,
     'fullName': fullName,
     'role': role.name,
     'login': login,
+    'stateId': ?stateId,
+    'lgaId': ?lgaId,
   };
 
-  User toDomain() => User(id: id, fullName: fullName, role: role);
+  User toDomain() => User(
+    id: id,
+    fullName: fullName,
+    role: role,
+    stateId: stateId,
+    lgaId: lgaId,
+  );
 }

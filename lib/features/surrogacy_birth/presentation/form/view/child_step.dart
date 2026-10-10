@@ -11,6 +11,7 @@ class _ChildStep extends StatelessWidget {
     final state = context.watch<SurrogacyFormCubit>().state;
     final data = state.referenceData!;
     final draft = state.draft!;
+    final registrationLocked = cubit.registrarLocation != null;
     final child = draft.child;
     final today = cubit.today;
     final f = _Fields<ChildField>(
@@ -22,7 +23,21 @@ class _ChildStep extends StatelessWidget {
         showRequired: state.showErrors,
       ),
       onChanged: cubit.childChanged,
-      isLocked: draft.isLocked,
+      // The registrar's own state and LGA, while they
+      // are among the options (so a bad location can't block the form).
+      isLocked: (field) =>
+          draft.isLocked(field) ||
+          (registrationLocked &&
+              switch (field) {
+                ChildField.registrationState => data.stateOptions.any(
+                  (o) => o.id == draft.child[field],
+                ),
+                ChildField.registrationLga =>
+                  data
+                      .lgasOf(draft.child[ChildField.registrationState])
+                      .any((o) => o.id == draft.child[field]),
+                _ => false,
+              }),
     );
 
     return AppFieldColumn(

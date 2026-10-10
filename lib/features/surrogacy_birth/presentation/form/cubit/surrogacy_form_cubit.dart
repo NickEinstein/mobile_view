@@ -1,11 +1,12 @@
 import 'dart:async';
-
 import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vital_reg_mobile/core/error/failure.dart';
 import 'package:vital_reg_mobile/core/result/result.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/features/surrogacy_birth/domain/entities/surrogacy_draft.dart';
 import 'package:vital_reg_mobile/features/surrogacy_birth/domain/entities/surrogacy_form.dart';
@@ -19,6 +20,7 @@ part 'surrogacy_form_state.dart';
 class SurrogacyFormCubit extends Cubit<SurrogacyFormState> {
   SurrogacyFormCubit(
     this._repository, {
+    this.registrarLocation,
     this.queriedId,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now,
@@ -30,6 +32,23 @@ class SurrogacyFormCubit extends Cubit<SurrogacyFormState> {
   /// Set when correcting a queried application; kept in memory and resent
   /// whole.
   final String? queriedId;
+
+  /// The signed-in registrar's state and LGA. The
+  /// registration state and LGA are fixed to them.
+  final RegistrarLocation? registrarLocation;
+
+  SurrogacyDraft _located(SurrogacyDraft draft) {
+    final location = registrarLocation;
+    if (location == null) return draft;
+    var child = draft.child;
+    if (child[ChildField.registrationState] != location.stateId) {
+      child = child.set(ChildField.registrationState, location.stateId);
+    }
+    if (child[ChildField.registrationLga] != location.lgaId) {
+      child = child.set(ChildField.registrationLga, location.lgaId);
+    }
+    return child == draft.child ? draft : draft.copyWith(child: child);
+  }
 
   bool get isQueried => queriedId != null;
 
@@ -79,6 +98,12 @@ class SurrogacyFormCubit extends Cubit<SurrogacyFormState> {
         return;
       }
       draft = draft.copyWith(paymentReference: payment.reference);
+      await _repository.saveDraft(draft);
+      if (isClosed) return;
+    }
+    final located = _located(draft);
+    if (located != draft) {
+      draft = located;
       await _repository.saveDraft(draft);
       if (isClosed) return;
     }
@@ -144,13 +169,17 @@ class SurrogacyFormCubit extends Cubit<SurrogacyFormState> {
           state.copyWith(
             status: FormStatus.ready,
             referenceData: data,
-            draft: record.draft
-                .withRegistrationLocation(data.locationOfCenter)
+            draft:
+                _located(
+                  record.draft.withRegistrationLocation(data.locationOfCenter),
+                )
                 // Opens on the review, to see what needs correcting.
                 .copyWith(step: SurrogacyStep.review),
             queryReason: record.remarks,
           ),
         );
+        // The registrar's state, if the record had another.
+        unawaited(_loadLgas(state.draft!));
       case (Err(:final failure), _) || (_, Err(:final failure)):
         _fail(failure);
     }

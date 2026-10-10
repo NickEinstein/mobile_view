@@ -59,6 +59,10 @@ Set<String> statesChosenIn({
   ?informant[InformantField.state],
 };
 
+/// The registrar's own state and LGA. Registrations
+/// take place there, so the form fills them in and doesn't let them change.
+typedef RegistrarLocation = ({String stateId, String lgaId});
+
 /// "Particulars of Child".
 final class ChildParticulars extends Equatable {
   const ChildParticulars([this.values = const {}]);
@@ -94,6 +98,19 @@ final class ChildParticulars extends Equatable {
   }
 
   bool needsPaymentOn(DateTime today) => (ageOn(today) ?? 0) >= feeFromAgeYears;
+
+  /// With the registration state and LGA set to [location]. The centre is
+  /// kept unless the LGA changes.
+  ChildParticulars locatedAt(RegistrarLocation location) {
+    var child = this;
+    if (child[ChildField.registrationState] != location.stateId) {
+      child = child.set(ChildField.registrationState, location.stateId);
+    }
+    if (child[ChildField.registrationLga] != location.lgaId) {
+      child = child.set(ChildField.registrationLga, location.lgaId);
+    }
+    return child;
+  }
 
   ChildParticulars set(ChildField field, String? value) {
     final next = Map<ChildField, String>.of(values);
@@ -147,6 +164,50 @@ enum RegistrationStep {
   static int get count => values.length;
 }
 
+/// A queried record's stored files are `server:<key>` paths, sent back by
+/// key. The signature isn't returned, so it is `server:` with no key.
+const _serverPrefix = 'server:';
+
+String serverPath(String key) => '$_serverPrefix$key';
+
+bool isOnServer(String path) => path.startsWith(_serverPrefix);
+
+/// The storage key of a [serverPath], or null if it has none (or isn't
+/// one).
+String? serverKeyOf(String path) {
+  if (!isOnServer(path)) return null;
+  final key = path.substring(_serverPrefix.length);
+  return key.isEmpty ? null : key;
+}
+
+/// Marks a draft as a queried record's correction (in memory only).
+final class QueriedRecord extends Equatable {
+  const QueriedRecord({
+    required this.recordId,
+    required this.certificateNumber,
+    this.paymentReference,
+    this.reason,
+  });
+
+  /// `Birth_Reg_ID`.
+  final String recordId;
+  final String certificateNumber;
+
+  /// The fee paid with the original application, sent back unchanged.
+  final String? paymentReference;
+
+  /// The registrar's reason for the query.
+  final String? reason;
+
+  @override
+  List<Object?> get props => [
+    recordId,
+    certificateNumber,
+    paymentReference,
+    reason,
+  ];
+}
+
 /// An application in progress, saved as the user goes so it can be resumed.
 final class RegistrationDraft extends Equatable {
   const RegistrationDraft({
@@ -161,6 +222,7 @@ final class RegistrationDraft extends Equatable {
     this.documents = const SupportingDocuments(),
     this.submissionKey,
     this.paymentReference,
+    this.queried,
   });
 
   factory RegistrationDraft.fromJson(Map<String, Object?> json) {
@@ -204,8 +266,20 @@ final class RegistrationDraft extends Equatable {
   /// [ChildParticulars.needsPaymentOn]).
   final String? paymentReference;
 
+  /// Set when correcting a queried record; never saved (see
+  /// [QueriedRecord]).
+  final QueriedRecord? queried;
+
+  /// A correction was paid for with the original application.
   bool isPaidFor(DateTime today) =>
-      paymentReference != null || !child.needsPaymentOn(today);
+      queried != null ||
+      paymentReference != null ||
+      !child.needsPaymentOn(today);
+
+  ParentParticulars parentOf(ParentRole role) => switch (role) {
+    ParentRole.mother => mother,
+    ParentRole.father => father,
+  };
 
   /// When neither parent gave a NIN, the informant must.
   bool get parentsGaveNin => mother.hasNin || father.hasNin;
@@ -237,12 +311,13 @@ final class RegistrationDraft extends Equatable {
     informant: informant,
   );
 
-  /// Every photo, signature and document the draft points to.
+  /// Every photo, signature and document the draft keeps on the device
+  /// (not those still in storage).
   Iterable<String> get files => [
     ?child[ChildField.facePhoto],
     ...informant.files,
     for (final file in documents.files.values) file.path,
-  ];
+  ].where((path) => !isOnServer(path));
 
   RegistrationDraft copyWith({
     RegistrationStep? step,
@@ -265,6 +340,7 @@ final class RegistrationDraft extends Equatable {
     documents: documents ?? this.documents,
     submissionKey: submissionKey ?? this.submissionKey,
     paymentReference: paymentReference ?? this.paymentReference,
+    queried: queried,
   );
 
   Map<String, Object?> toJson() => {
@@ -294,6 +370,7 @@ final class RegistrationDraft extends Equatable {
     documents,
     submissionKey,
     paymentReference,
+    queried,
   ];
 
   /// Contains personal data: keep it out of logs.

@@ -229,3 +229,17 @@ String? registrationAddedFromJson(Object? json) => switch (json) {
   }
   return (url: url, key: map.requireString('key'));
 }
+
+/// `PATCH /birth-registration/update`: the application with the record's
+/// id and fee, without the child's NIN. A null file keeps the one on file.
+JsonMap registrationUpdateToJson(
+  RegistrationDraft draft, {
+  required QueriedRecord queried,
+  required ReferenceData places,
+  required RegistrationUploads uploads,
+}) => {
+  ...registrationToJson(draft, places: places, uploads: uploads),
+  'Birth_Reg_ID': _number(queried.recordId),
+  'NIN': null,
+  'paymentReference': queried.paymentReference,
+};

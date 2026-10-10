@@ -12,6 +12,8 @@ class _ChildStep extends StatelessWidget {
     final child = state.draft!.child;
     final data = state.referenceData!;
     final today = cubit.today;
+    // The registrar's own state and LGA, not editable.
+    final locationLocked = cubit.registrarLocation != null;
 
     String? error(ChildField field) {
       final error = child.errorOf(field, today: today);
@@ -50,6 +52,7 @@ class _ChildStep extends StatelessWidget {
       String label,
       List<Option> options, {
       String? note,
+      bool locked = false,
     }) => AppSelectField<String>(
       label: label,
       optionalLabel: note,
@@ -57,8 +60,11 @@ class _ChildStep extends StatelessWidget {
       items: {for (final o in options) o.id: o.label},
       value: child[field],
       errorText: error(field),
-      // Nothing to choose yet (e.g. no state picked for an LGA).
-      onChanged: options.isEmpty
+      // Disabled with nothing to choose, or when locked (unless the value
+      // isn't an option).
+      onChanged:
+          options.isEmpty ||
+              (locked && options.any((o) => o.id == child[field]))
           ? null
           : (value) => cubit.childChanged(field, value),
     );
@@ -138,6 +144,7 @@ class _ChildStep extends StatelessWidget {
         ChildField.registrationState,
         l10n.brRegistrationState,
         data.stateOptions,
+        locked: locationLocked,
       ),
       _lgaField(
         state,
@@ -146,6 +153,7 @@ class _ChildStep extends StatelessWidget {
           ChildField.registrationLga,
           l10n.brRegistrationLga,
           data.lgasOf(child[ChildField.registrationState]),
+          locked: locationLocked,
         ),
       ),
       select(

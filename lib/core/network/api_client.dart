@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:vital_reg_mobile/core/error/failure.dart';
 import 'package:vital_reg_mobile/core/network/cancellation.dart';
 import 'package:vital_reg_mobile/core/network/error_mapper.dart';
+import 'package:vital_reg_mobile/core/network/record_changes.dart';
 import 'package:vital_reg_mobile/core/network/request_flags.dart';
 import 'package:vital_reg_mobile/core/observability/crash_reporter.dart';
 import 'package:vital_reg_mobile/core/result/result.dart';
@@ -11,10 +12,12 @@ typedef Decoder<T> = T Function(Object? json);
 /// The only class that talks to Dio: every call decodes to a typed
 /// [Result]. Used by repositories only.
 class ApiClient {
-  ApiClient(this._dio, this._crashReporter);
+  ApiClient(this._dio, this._crashReporter, {RecordChanges? changes})
+    : _changes = changes ?? recordChanges;
 
   final Dio _dio;
   final CrashReporter _crashReporter;
+  final RecordChanges _changes;
 
   Future<Result<T>> get<T>(
     String path, {
@@ -51,6 +54,7 @@ class ApiClient {
       cancelToken: _token(cancellation),
     ),
     decode,
+    write: true,
   );
 
   /// With [authenticated] false and a full URL in [path], uploads to
@@ -70,6 +74,7 @@ class ApiClient {
       cancelToken: _token(cancellation),
     ),
     decode,
+    write: true,
   );
 
   Future<Result<T>> patch<T>(
@@ -85,6 +90,7 @@ class ApiClient {
       cancelToken: _token(cancellation),
     ),
     decode,
+    write: true,
   );
 
   Future<Result<T>> delete<T>(
@@ -100,6 +106,7 @@ class ApiClient {
       cancelToken: _token(cancellation),
     ),
     decode,
+    write: true,
   );
 
   static CancelToken? _token(Cancellation? cancellation) {
@@ -112,10 +119,12 @@ class ApiClient {
   Options _options(bool authenticated) =>
       Options(extra: {RequestFlags.skipAuth: !authenticated});
 
+  /// A successful [write] bumps [RecordChanges].
   Future<Result<T>> _send<T>(
     Future<Response<Object?>> Function() request,
-    Decoder<T> decode,
-  ) async {
+    Decoder<T> decode, {
+    bool write = false,
+  }) async {
     final Response<Object?> response;
     try {
       response = await request();
@@ -130,6 +139,8 @@ class ApiClient {
       }
       return Err(failure);
     }
+    // The server took the write, even if its answer can't be decoded.
+    if (write) _changes.bump();
 
     try {
       return Ok(decode(response.data));

@@ -19,6 +19,8 @@ import 'package:vital_reg_mobile/design_system/widgets/app_text_field.dart';
 import 'package:vital_reg_mobile/design_system/widgets/form/app_form_layout.dart';
 import 'package:vital_reg_mobile/design_system/widgets/form/app_upload_tile.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reference_data.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/death_registration_repository.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/entities/death_form.dart';
@@ -39,6 +41,7 @@ part 'submitted_dialog.dart';
 class DeathFormPage extends StatelessWidget {
   const DeathFormPage({
     required this.onExit,
+    this.registrarLocation,
     this.queriedRecordId,
     this.repository,
     super.key,
@@ -49,6 +52,10 @@ class DeathFormPage extends StatelessWidget {
   /// Corrects this queried record instead of registering a new death.
   final String? queriedRecordId;
 
+  /// The signed-in registrar's state and LGA (from the router), which the
+  /// registration state and LGA are fixed to.
+  final RegistrarLocation? registrarLocation;
+
   /// Defaults to the registered one; tests pass a fake.
   final DeathRegistrationRepository? repository;
 
@@ -58,6 +65,7 @@ class DeathFormPage extends StatelessWidget {
       create: (_) => DeathFormCubit(
         repository ?? GetIt.instance<DeathRegistrationRepository>(),
         queriedRecordId: queriedRecordId,
+        registrarLocation: registrarLocation,
       )..load().ignore(),
       child: DeathFormView(onExit: onExit),
     );

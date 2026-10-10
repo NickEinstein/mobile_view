@@ -91,6 +91,18 @@ Map<String, Object?>? _birthRegistration(String id) {
       'mother_age_at_birth': 23,
       'father_age_at_birth': 30,
       'ChildFace': 'https://files.example/child-face.jpg',
+      // The storage keys behind the viewing URLs, as `single` adds them.
+      'rawChildFace': 'demo/BR-CHILD-FACE.jpg',
+      'rawSupportingDocument': [
+        for (final type in [
+          'immunization-card',
+          'notification-of-birth',
+          'lga-birth-certificate',
+          'baptisim-card',
+        ])
+          {'type': type, 'mimeType': 'image/jpeg', 'file': 'demo/$type.jpg'},
+      ],
+      'reference': null,
       'SupportingDocument': [
         for (final type in [
           'immunization-card',

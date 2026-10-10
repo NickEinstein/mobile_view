@@ -173,6 +173,13 @@ class FakeBackendInterceptor extends Interceptor {
           'Printed': '4',
           'total': '6',
         });
+      // A queried record's correction, as `UpdateRegistration` takes it.
+      case ('PATCH', '/birth-registration/update'):
+        if (fields['Birth_Reg_ID'] is! int) {
+          _fail(handler, options, 400, 'Birth_Reg_ID must be a number.');
+        } else {
+          _ok(handler, options, {'success': true, 'reject': false});
+        }
       case ('GET', '/birth-registration/list'):
         _ok(handler, options, _birthRegistrations(options.queryParameters));
       case ('POST', '/birth-registration/add'):
@@ -683,9 +690,13 @@ class FakeBackendInterceptor extends Interceptor {
     };
   }
 
-  /// The identity service's answer.
-  /// `00000000000` has no record; `11111111111` belongs to a 10-year-old.
-  static Map<String, Object?> _ninRecord(String nin) => switch (nin) {
+  /// The identity service's answer, under `nimc`. `00000000000` has no
+  /// record; `11111111111` belongs to a 10-year-old.
+  static Map<String, Object?> _ninRecord(String nin) => {
+    'nimc': _nimcRecord(nin),
+  };
+
+  static Map<String, Object?> _nimcRecord(String nin) => switch (nin) {
     '00000000000' => {'status': 0},
     _ => {
       'status': 1,

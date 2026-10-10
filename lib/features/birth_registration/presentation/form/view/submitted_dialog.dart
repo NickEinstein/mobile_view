@@ -6,6 +6,7 @@ Future<void> _showSubmittedDialog(
   BuildContext context, {
   required String? trackingId,
   required bool remindNin,
+  bool correction = false,
 }) => showDialog<void>(
   context: context,
   barrierDismissible: false,
@@ -17,7 +18,9 @@ Future<void> _showSubmittedDialog(
       child: AppDialog(
         children: [
           Text(
-            l10n.brSubmittedTitle,
+            correction
+                ? l10n.brCorrectionSubmittedTitle
+                : l10n.brSubmittedTitle,
             textAlign: TextAlign.center,
             style: textTheme.titleLarge?.copyWith(
               color: AppPalette.brand,
@@ -27,7 +30,10 @@ Future<void> _showSubmittedDialog(
           const SizedBox(height: Spacing.sm),
           Text(
             [
-              l10n.brSubmittedMessage,
+              if (correction)
+                l10n.brCorrectionSubmittedMessage
+              else
+                l10n.brSubmittedMessage,
               if (remindNin) l10n.brSubmittedNinReminder,
             ].join(' '),
             textAlign: TextAlign.center,

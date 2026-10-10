@@ -24,6 +24,8 @@ import 'package:vital_reg_mobile/features/adopted_child/domain/entities/adoption
 import 'package:vital_reg_mobile/features/adopted_child/presentation/form/cubit/adoption_form_cubit.dart';
 import 'package:vital_reg_mobile/features/adopted_child/presentation/shared/adoption_sections.dart';
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reference_data.dart';
+import 'package:vital_reg_mobile/features/birth_registration/domain/entities/registration_draft.dart'
+    show RegistrarLocation;
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/l10n/failure_l10n.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
@@ -44,6 +46,7 @@ part 'submitted_dialog.dart';
 class AdoptionFormPage extends StatelessWidget {
   const AdoptionFormPage({
     required this.onExit,
+    this.registrarLocation,
     this.queriedId,
     this.repository,
     super.key,
@@ -54,6 +57,10 @@ class AdoptionFormPage extends StatelessWidget {
   /// Corrects this queried application instead of the one on the device.
   final String? queriedId;
 
+  /// The signed-in registrar's state and LGA (from the router), which the
+  /// registration state and LGA are fixed to.
+  final RegistrarLocation? registrarLocation;
+
   /// Defaults to the registered one; tests pass a fake.
   final AdoptedChildRepository? repository;
 
@@ -63,6 +70,7 @@ class AdoptionFormPage extends StatelessWidget {
       create: (_) => AdoptionFormCubit(
         repository ?? GetIt.instance<AdoptedChildRepository>(),
         queriedId: queriedId,
+        registrarLocation: registrarLocation,
       )..load().ignore(),
       child: AdoptionFormView(onExit: onExit),
     );

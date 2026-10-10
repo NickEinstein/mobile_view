@@ -17,11 +17,13 @@ import 'package:vital_reg_mobile/features/payments/domain/entities/payment.dart'
 
 part 'registration_form_state.dart';
 
-/// The six-step form. Every change is saved to the draft straight away, so
-/// the user can leave at any point and continue later.
+/// The six-step form, saved on every change. With [queriedRecordId] it
+/// corrects that record instead (in memory only).
 class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   RegistrationFormCubit(
     this._repository, {
+    this.registrarLocation,
+    this.queriedRecordId,
     DateTime Function()? now,
     String Function()? newSubmissionKey,
   }) : _now = now ?? DateTime.now,
@@ -29,6 +31,12 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
        super(const RegistrationFormState());
 
   final BirthRegistrationRepository _repository;
+
+  /// When known, the registration state and LGA are fixed to it.
+  final RegistrarLocation? registrarLocation;
+
+  /// `Birth_Reg_ID` of the queried record being corrected.
+  final String? queriedRecordId;
   final DateTime Function() _now;
   final String Function() _newSubmissionKey;
 
@@ -58,14 +66,51 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
 
   Future<void> load() async {
     emit(state.copyWith(status: FormStatus.loading));
-    final draft =
-        await _repository.loadDraft() ?? RegistrationDraft(startedOn: _now());
+    if (queriedRecordId case final id?) return _loadQueried(id);
+    final saved = await _repository.loadDraft();
+    final draft = _located(saved ?? RegistrationDraft(startedOn: _now()));
+    if (saved != null && draft != saved) await _repository.saveDraft(draft);
     final reference = await _repository.referenceData();
     if (isClosed) return;
     switch (reference) {
       case Ok(value: final referenceData):
         // The draft's states' LGAs follow; if they fail, only those
         // fields say so.
+        unawaited(_loadLgas(draft));
+        emit(
+          state.copyWith(
+            status: FormStatus.ready,
+            draft: draft,
+            referenceData: referenceData,
+          ),
+        );
+      case Err(:final failure):
+        emit(state.copyWith(status: FormStatus.failure, failure: failure));
+    }
+  }
+
+  RegistrationDraft _located(RegistrationDraft draft) {
+    final location = registrarLocation;
+    return location == null
+        ? draft
+        : draft.copyWith(child: draft.child.locatedAt(location));
+  }
+
+  Future<void> _loadQueried(String id) async {
+    final details = await _repository.details(id);
+    if (isClosed) return;
+    final RegistrationDraft draft;
+    switch (details) {
+      case Ok(value: final record):
+        draft = _located(record.toQueriedDraft(_now()));
+      case Err(:final failure):
+        emit(state.copyWith(status: FormStatus.failure, failure: failure));
+        return;
+    }
+    final reference = await _repository.referenceData();
+    if (isClosed) return;
+    switch (reference) {
+      case Ok(value: final referenceData):
         unawaited(_loadLgas(draft));
         emit(
           state.copyWith(
@@ -133,20 +178,61 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   void parentChanged(ParentRole role, ParentField field, String? value) {
     final draft = state.draft;
     if (draft == null) return;
-    _update(switch (role) {
-      ParentRole.mother => draft.copyWith(
-        mother: draft.mother.set(field, value),
-      ),
-      ParentRole.father => draft.copyWith(
-        father: draft.father.set(field, value),
-      ),
-    });
+    _update(_withParent(draft, role, draft.parentOf(role).set(field, value)));
   }
 
+  /// [draft] with [parent] as [role]. A parent informant follows: what the
+  /// informant step shows of them stays that parent's.
+  RegistrationDraft _withParent(
+    RegistrationDraft draft,
+    ParentRole role,
+    ParentParticulars parent,
+  ) {
+    final updated = switch (role) {
+      ParentRole.mother => draft.copyWith(mother: parent),
+      ParentRole.father => draft.copyWith(father: parent),
+    };
+    return updated.informant.parentRole == role
+        ? updated.copyWith(
+            informant: updated.informant.copiedFrom(parent, role),
+          )
+        : updated;
+  }
+
+  /// Father or Mother fills the informant from that parent; their phone
+  /// and NIN edit the parent's.
   void informantChanged(InformantField field, String? value) {
     final draft = state.draft;
     if (draft == null) return;
-    _update(draft.copyWith(informant: draft.informant.set(field, value)));
+    final before = draft.informant;
+    if (field == InformantField.relationship) {
+      final chosen = before.set(field, value);
+      final role = chosen.parentRole;
+      _update(
+        draft.copyWith(
+          informant: role != null
+              ? chosen.copiedFrom(draft.parentOf(role), role)
+              : before.parentRole != null
+              // No longer a parent: start the person's details afresh.
+              ? chosen.withoutParent()
+              : chosen,
+        ),
+      );
+      return;
+    }
+    final role = before.parentRole;
+    final parentField = switch (field) {
+      InformantField.phone => ParentField.phone,
+      InformantField.nin => ParentField.nin,
+      _ => null,
+    };
+    if (role != null && parentField != null) {
+      _update(
+        _withParent(draft, role, draft.parentOf(role).set(parentField, value)),
+      );
+      return;
+    }
+    _update(draft.copyWith(informant: before.set(field, value)));
   }
 
   Future<void> informantPhotoCaptured(String capturedPath) async {
@@ -247,6 +333,9 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
       ),
     );
     await flush();
+    if (keyed.queried case final queried?) {
+      return _sendCorrection(keyed, queried.certificateNumber);
+    }
     final result = await _repository.submit(
       keyed,
       cancellation: _submission = Cancellation(),
@@ -275,6 +364,34 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
           ),
         );
     }
+  }
+
+  /// Updates the queried record. Unlike a new application, no draft on
+  /// the device is involved, so none is discarded.
+  Future<void> _sendCorrection(
+    RegistrationDraft draft,
+    String certificateNumber,
+  ) async {
+    final result = await _repository.updateQueried(
+      draft,
+      cancellation: _submission = Cancellation(),
+      onProgress: (sent, total) {
+        if (!isClosed && total > 0) {
+          emit(state.copyWith(progress: () => sent / total));
+        }
+      },
+    );
+    if (isClosed) return;
+    emit(switch (result) {
+      Ok() => state.copyWith(
+        submitStatus: SubmitStatus.submitted,
+        trackingId: certificateNumber,
+      ),
+      Err(:final failure) => state.copyWith(
+        submitStatus: SubmitStatus.failed,
+        submitFailure: () => failure,
+      ),
+    });
   }
 
   /// "Save & Continue" / "Next". Shows the errors instead if the step is
@@ -353,7 +470,9 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
 
   void _update(RegistrationDraft draft, {bool? showErrors}) {
     emit(state.copyWith(draft: draft, showErrors: showErrors));
-    _saving = _saving.then((_) => _repository.saveDraft(draft));
     unawaited(_loadLgas(draft));
+    // A correction lives only in memory; the record is on the server.
+    if (draft.queried != null) return;
+    _saving = _saving.then((_) => _repository.saveDraft(draft));
   }
 }

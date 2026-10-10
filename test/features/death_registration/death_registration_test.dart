@@ -377,6 +377,22 @@ void main() {
 
     setUp(() => repository = FakeDeathRegistrationRepository());
 
+    test("the registration state and LGA are the registrar's", () async {
+      repository.draft = _complete();
+      final cubit = DeathFormCubit(
+        repository,
+        registrarLocation: (stateId: '19', lgaId: '249'),
+        now: () => _today,
+      );
+      await cubit.load();
+      final deceased = cubit.state.draft!.deceased;
+      expect(deceased[DeceasedField.registrationState], '19');
+      expect(deceased[DeceasedField.registrationLga], '249');
+      // The old centre was in another LGA.
+      expect(deceased[DeceasedField.registrationCenter], isNull);
+      expect(repository.draft!.deceased, deceased);
+    });
+
     test('verifying a NIN fills the names and locks them', () async {
       final cubit = _cubit(repository);
       await cubit.load();
@@ -496,7 +512,6 @@ void main() {
         DeathRegistrationHomePage(
           onOpenForm: () async {},
           onOpenRegistration: (_) async {},
-          onUpdateQueried: (_) async {},
           repository: FakeDeathRegistrationRepository(),
         ),
       );
@@ -507,17 +522,15 @@ void main() {
       expect(find.text('Lee Michael'), findsOneWidget);
     });
 
-    testWidgets('a queried row asks first; Update opens the correction', (
+    testWidgets('a queried row opens Certificate Details, no dialog', (
       tester,
     ) async {
       tallScreen(tester);
       final opened = <String>[];
-      final updated = <String>[];
       await tester.pumpApp(
         DeathRegistrationHomePage(
           onOpenForm: () async {},
           onOpenRegistration: (id) async => opened.add(id),
-          onUpdateQueried: (id) async => updated.add(id),
           repository: FakeDeathRegistrationRepository()
             ..listedStatus = ApplicationStatus.queried,
         ),
@@ -525,15 +538,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lee Michael'));
       await tester.pumpAndSettle();
-      expect(find.text('Queried Record'), findsOneWidget);
-      expect(
-        find.textContaining('Wrong document uploaded', findRichText: true),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Update'));
-      await tester.pumpAndSettle();
-      expect(updated, ['40000']);
-      expect(opened, isEmpty);
+      expect(opened, ['40000']);
+      expect(find.text('Queried Record'), findsNothing);
     });
 
     testWidgets('other rows open Certificate Details', (tester) async {
@@ -543,7 +549,6 @@ void main() {
         DeathRegistrationHomePage(
           onOpenForm: () async {},
           onOpenRegistration: (id) async => opened.add(id),
-          onUpdateQueried: (_) async {},
           repository: FakeDeathRegistrationRepository(),
         ),
       );

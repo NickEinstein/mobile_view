@@ -19,7 +19,9 @@ class AppRadioGroup<T> extends StatelessWidget {
   final String label;
   final Map<T, String> options;
   final T? value;
-  final ValueChanged<T> onChanged;
+
+  /// Null shows the choice without letting it change.
+  final ValueChanged<T>? onChanged;
   final bool inline;
   final bool vertical;
   final String? errorText;
@@ -28,10 +30,11 @@ class AppRadioGroup<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final errorText = this.errorText;
-    final choices = RadioGroup<T>(
+    final onChanged = this.onChanged;
+    final group = RadioGroup<T>(
       groupValue: value,
       onChanged: (choice) {
-        if (choice != null) onChanged(choice);
+        if (choice != null) onChanged?.call(choice);
       },
       child: Wrap(
         direction: vertical ? Axis.vertical : Axis.horizontal,
@@ -43,7 +46,7 @@ class AppRadioGroup<T> extends StatelessWidget {
           for (final MapEntry(:key, value: text) in options.entries)
             InkWell(
               borderRadius: BorderRadius.circular(Spacing.sm),
-              onTap: () => onChanged(key),
+              onTap: onChanged == null ? null : () => onChanged(key),
               child: Padding(
                 padding: const EdgeInsets.only(right: Spacing.xs),
                 child: Row(
@@ -67,6 +70,9 @@ class AppRadioGroup<T> extends StatelessWidget {
         ],
       ),
     );
+    final choices = onChanged == null
+        ? IgnorePointer(child: Opacity(opacity: 0.6, child: group))
+        : group;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

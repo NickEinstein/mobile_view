@@ -209,6 +209,23 @@ void main() {
         SurrogacyFormCubit(repository, now: () => _today);
 
     blocTest<SurrogacyFormCubit, SurrogacyFormState>(
+      "the registration state and LGA are the registrar's",
+      setUp: () => repository.draft = paidDraft(),
+      build: () => SurrogacyFormCubit(
+        repository,
+        registrarLocation: (stateId: '19', lgaId: '249'),
+        now: () => _today,
+      ),
+      act: (cubit) => cubit.load(),
+      verify: (cubit) {
+        final child = cubit.state.draft!.child;
+        expect(child[ChildField.registrationState], '19');
+        expect(child[ChildField.registrationLga], '249');
+        expect(repository.draft!.child, child);
+      },
+    );
+
+    blocTest<SurrogacyFormCubit, SurrogacyFormState>(
       'a validated NIN fills the name and counts as verified',
       setUp: () =>
           repository.draft = paidDraft(step: SurrogacyStep.legalMother),

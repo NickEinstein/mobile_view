@@ -3,11 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:vital_reg_mobile/features/birth_registration/domain/entities/birth_application.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/cubit/applications_cubit.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/home/view/birth_registration_home_page.dart';
 import 'package:vital_reg_mobile/features/death_registration/domain/death_registration_repository.dart';
-import 'package:vital_reg_mobile/features/death_registration/presentation/home/view/queried_record_dialog.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
 
 /// Death Registration home: the Birth Registration home over deaths.
@@ -15,7 +13,6 @@ class DeathRegistrationHomePage extends StatefulWidget {
   const DeathRegistrationHomePage({
     required this.onOpenForm,
     required this.onOpenRegistration,
-    required this.onUpdateQueried,
     this.repository,
     super.key,
   });
@@ -26,9 +23,6 @@ class DeathRegistrationHomePage extends StatefulWidget {
 
   /// "Certificate Details".
   final OpenApplication onOpenRegistration;
-
-  /// Corrects a queried record.
-  final OpenApplication onUpdateQueried;
 
   /// Defaults to the registered one; tests pass a fake.
   final DeathRegistrationRepository? repository;
@@ -49,25 +43,9 @@ class _DeathRegistrationHomePageState extends State<DeathRegistrationHomePage> {
     super.dispose();
   }
 
-  /// A queried record opens the "Queried Record" dialog first; the rest
-  /// open Certificate Details.
-  Future<void> _open(String id) async {
-    BirthApplicationSummary? item;
-    for (final candidate in _cubit.state.items) {
-      if (candidate.id == id) item = candidate;
-    }
-    if (item?.status != ApplicationStatus.queried) {
-      return widget.onOpenRegistration(id);
-    }
-    final update = await showQueriedRecordDialog(
-      context,
-      record: _repository.details(id),
-    );
-    if (!update) return;
-    await widget.onUpdateQueried(id);
-    // Back from the correction: it may have left the queried list.
-    if (!_cubit.isClosed) await _cubit.load();
-  }
+  /// Every record opens its details; a queried one shows the reason
+  /// and "Update" there.
+  Future<void> _open(String id) => widget.onOpenRegistration(id);
 
   @override
   Widget build(BuildContext context) {

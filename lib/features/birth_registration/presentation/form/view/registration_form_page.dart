@@ -25,6 +25,7 @@ import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reg
 import 'package:vital_reg_mobile/features/birth_registration/domain/entities/supporting_documents.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/form/cubit/registration_form_cubit.dart';
 import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/application_sections.dart';
+import 'package:vital_reg_mobile/features/birth_registration/presentation/shared/query_reason_card.dart';
 import 'package:vital_reg_mobile/l10n/failure_l10n.dart';
 import 'package:vital_reg_mobile/l10n/l10n.dart';
 
@@ -45,18 +46,28 @@ class RegistrationFormPage extends StatelessWidget {
   const RegistrationFormPage({
     required this.onExit,
     required this.onPayment,
+    this.registrarLocation,
+    this.queriedRecordId,
     super.key,
   });
 
   final VoidCallback onExit;
   final Future<void> Function() onPayment;
 
+  /// The signed-in registrar's state and LGA (from the router).
+  final RegistrarLocation? registrarLocation;
+
+  /// Corrects this queried record instead of starting an application.
+  final String? queriedRecordId;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          RegistrationFormCubit(GetIt.instance<BirthRegistrationRepository>())
-            ..load().ignore(),
+      create: (_) => RegistrationFormCubit(
+        GetIt.instance<BirthRegistrationRepository>(),
+        registrarLocation: registrarLocation,
+        queriedRecordId: queriedRecordId,
+      )..load().ignore(),
       child: RegistrationFormView(onExit: onExit, onPayment: onPayment),
     );
   }
@@ -95,7 +106,12 @@ class RegistrationFormView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Spacing.sm),
-          Text(l10n.brExitMessage, textAlign: TextAlign.center),
+          Text(
+            cubit.state.draft?.queried == null
+                ? l10n.brExitMessage
+                : l10n.brExitCorrectionMessage,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: Spacing.lg),
           Row(
             children: [
@@ -126,10 +142,12 @@ class RegistrationFormView extends StatelessWidget {
     BuildContext context,
     RegistrationFormState state,
   ) async {
+    final correction = state.draft?.queried != null;
     await _showSubmittedDialog(
       context,
       trackingId: state.trackingId,
-      remindNin: state.draft?.childHasNin == false,
+      remindNin: !correction && state.draft?.childHasNin == false,
+      correction: correction,
     );
     onExit();
   }
@@ -218,6 +236,22 @@ class RegistrationFormView extends StatelessWidget {
   }
 }
 
+/// The registrar's reason for the query, above every step of a
+/// correction.
+class _QueryReasonBanner extends StatelessWidget {
+  const _QueryReasonBanner({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
+      child: QueryReasonCard(reason: reason),
+    );
+  }
+}
+
 class _FormBody extends StatelessWidget {
   const _FormBody({required this.onExit});
 
@@ -233,6 +267,8 @@ class _FormBody extends StatelessWidget {
       child: Column(
         children: [
           _StepHeader(step: step, startedOn: state.draft!.startedOn),
+          if (state.draft!.queried case QueriedRecord(:final reason?))
+            _QueryReasonBanner(reason: reason),
           Expanded(
             child: ListView(
               key: ValueKey(step),
