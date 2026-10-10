@@ -10,7 +10,6 @@ import 'package:vital_reg_mobile/app/view/app_shell.dart';
 import 'package:vital_reg_mobile/app/view/home_tab.dart';
 import 'package:vital_reg_mobile/app/view/module_placeholder_page.dart';
 import 'package:vital_reg_mobile/app/view/splash_page.dart';
-import 'package:vital_reg_mobile/app/view/tab_placeholder_page.dart';
 import 'package:vital_reg_mobile/core/feature_flags/feature_flags.dart';
 import 'package:vital_reg_mobile/core/navigation/reload_on_return.dart';
 import 'package:vital_reg_mobile/core/offline/offline_mode.dart';
@@ -26,6 +25,7 @@ import 'package:vital_reg_mobile/features/auth/domain/entities/user.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/login/view/login_page.dart';
 import 'package:vital_reg_mobile/features/auth/presentation/password_reset/view/password_reset_page.dart';
+import 'package:vital_reg_mobile/features/auth/presentation/profile/profile_page.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/domain/birth_attestation_repository.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/presentation/details/view/attestation_details_page.dart';
 import 'package:vital_reg_mobile/features/birth_attestation/presentation/face/view/face_validation_page.dart';
@@ -169,16 +169,8 @@ GoRouter createRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.applications,
-                builder: (context, state) => const TabPlaceholderPage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: AppRoutes.profile,
-                builder: (context, state) => const TabPlaceholderPage(),
+                builder: (context, state) => const ProfilePage(),
               ),
             ],
           ),

@@ -6,7 +6,6 @@ abstract final class AppRoutes {
   static const home = '/';
 
   // Bottom tab pages (home is the first; Services is a sheet).
-  static const applications = '/applications';
   static const profile = '/profile';
 
   // Birth Registration (the module path must match AppModule).

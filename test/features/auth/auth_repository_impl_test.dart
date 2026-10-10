@@ -237,6 +237,25 @@ void main() {
       expect((kept.stateId, kept.lgaId), ('19', '249'));
     });
 
+    test("keeps the profile's details, also on the device", () {
+      final dto = UserDto.fromSignIn({
+        'User_ID': 7,
+        'UserName': 'reg7',
+        'Email': 'reg7@npc.gov.ng',
+        'Phone_No': '08130845852',
+        'Role_ID': 3,
+        'roles': {'id': 3, 'name': 'Registrar'},
+        'Registration_Centres': {'Reg_Center_Name': 'Ikeja Centre'},
+      })!;
+      final kept = UserDto.fromJson(dto.toJson()).toDomain();
+
+      expect(kept.userName, 'reg7');
+      expect(kept.email, 'reg7@npc.gov.ng');
+      expect(kept.phone, '08130845852');
+      expect(kept.roleName, 'Registrar');
+      expect(kept.centreName, 'Ikeja Centre');
+    });
+
     test('a copy saved before they were kept reads without them', () {
       final user = UserDto.fromJson({
         'id': '7',

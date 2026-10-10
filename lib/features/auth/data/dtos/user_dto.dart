@@ -12,6 +12,11 @@ final class UserDto {
     required this.login,
     this.stateId,
     this.lgaId,
+    this.userName,
+    this.email,
+    this.phone,
+    this.roleName,
+    this.centreName,
   });
 
   /// The `user` object of the backend's sign-in response. Null when the
@@ -24,8 +29,14 @@ final class UserDto {
     if (id is! int && id is! String) {
       throw const FormatException('Expected "User_ID".');
     }
-    String? text(String key) => switch (map[key]) {
+    String? textOf(Object? value) => switch (value) {
       final String value when value.trim().isNotEmpty => value.trim(),
+      _ => null,
+    };
+    String? text(String key) => textOf(map[key]);
+    // Joined records: the role (`roles`) and centre (`Registration_Centres`).
+    String? joined(String record, String key) => switch (map[record]) {
+      final Map<String, Object?> joined => textOf(joined[key]),
       _ => null,
     };
     final login = text('UserName') ?? text('Email') ?? text('Phone_No');
@@ -46,6 +57,11 @@ final class UserDto {
       login: login,
       stateId: optionalId('State_ID'),
       lgaId: optionalId('LGA_ID'),
+      userName: text('UserName'),
+      email: text('Email'),
+      phone: text('Phone_No'),
+      roleName: joined('roles', 'name') ?? text('RoleName'),
+      centreName: joined('Registration_Centres', 'Reg_Center_Name'),
     );
   }
 
@@ -63,6 +79,11 @@ final class UserDto {
       // Absent from copies saved before they were kept.
       stateId: map['stateId'] as String?,
       lgaId: map['lgaId'] as String?,
+      userName: map['userName'] as String?,
+      email: map['email'] as String?,
+      phone: map['phone'] as String?,
+      roleName: map['roleName'] as String?,
+      centreName: map['centreName'] as String?,
     );
   }
 
@@ -78,6 +99,13 @@ final class UserDto {
   final String? stateId;
   final String? lgaId;
 
+  /// For the profile.
+  final String? userName;
+  final String? email;
+  final String? phone;
+  final String? roleName;
+  final String? centreName;
+
   JsonMap toJson() => {
     'id': id,
     'fullName': fullName,
@@ -85,6 +113,11 @@ final class UserDto {
     'login': login,
     'stateId': ?stateId,
     'lgaId': ?lgaId,
+    'userName': ?userName,
+    'email': ?email,
+    'phone': ?phone,
+    'roleName': ?roleName,
+    'centreName': ?centreName,
   };
 
   User toDomain() => User(
@@ -93,5 +126,10 @@ final class UserDto {
     role: role,
     stateId: stateId,
     lgaId: lgaId,
+    userName: userName,
+    email: email,
+    phone: phone,
+    roleName: roleName,
+    centreName: centreName,
   );
 }
