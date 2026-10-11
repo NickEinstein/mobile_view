@@ -18,7 +18,11 @@ class _FormActions extends StatelessWidget {
     // missing.
     final Widget primary = switch (step) {
       RegistrationStep.review => AppButton(
-        label: l10n.brSubmit,
+        label: cubit.outboxId != null
+            ? l10n.brSaveChanges
+            : cubit.offline && state.draft?.queried == null
+            ? l10n.brSaveForLater
+            : l10n.brSubmit,
         muted: !state.canSubmit(cubit.today),
         isLoading: submitting,
         onPressed: () => unawaited(cubit.submit()),

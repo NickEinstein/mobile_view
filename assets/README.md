@@ -48,3 +48,11 @@ on the app's licences page. Registered in `pubspec.yaml`; family names live in
 `lib/design_system/tokens/app_fonts.dart`.
 
 Fonts are bundled rather than downloaded at runtime so the app works offline.
+
+## `reference/`
+
+Snapshots of the backend's place lists, used by offline mode until the app
+has downloaded its own: `countries.json` (`/option/country`), `states.json`
+(`/option/states/63`) and `lgas.json` (every `/option/lga/:stateId`, with
+`State_ID`). Registration centres have no snapshot; they must be downloaded
+once online.

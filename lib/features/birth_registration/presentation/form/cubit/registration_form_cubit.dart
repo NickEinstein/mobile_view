@@ -18,12 +18,15 @@ import 'package:vital_reg_mobile/features/payments/domain/entities/payment.dart'
 part 'registration_form_state.dart';
 
 /// The six-step form, saved on every change. With [queriedRecordId] it
-/// corrects that record instead (in memory only).
+/// corrects that record instead, and with [outboxId] an application saved
+/// offline (both in memory only).
 class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   RegistrationFormCubit(
     this._repository, {
     this.registrarLocation,
     this.queriedRecordId,
+    this.outboxId,
+    this.offline = false,
     DateTime Function()? now,
     String Function()? newSubmissionKey,
   }) : _now = now ?? DateTime.now,
@@ -37,6 +40,20 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
 
   /// `Birth_Reg_ID` of the queried record being corrected.
   final String? queriedRecordId;
+
+  /// The outbox entry being edited.
+  final String? outboxId;
+
+  /// Offline mode: applications go to the outbox, and as the fee can't be
+  /// paid, a child of 5 or older can't be registered.
+  final bool offline;
+
+  /// Saved on the device rather than sent: offline, or editing the outbox.
+  bool get savesOnDevice => offline || outboxId != null;
+
+  /// The outbox entry's files, deleted only once the edit is saved.
+  Set<String> _entryFiles = const {};
+  bool _editSaved = false;
   final DateTime Function() _now;
   final String Function() _newSubmissionKey;
 
@@ -45,10 +62,19 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   Cancellation? _submission;
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
     _submission?.cancel();
+    // An unsaved edit leaves the entry as it was: drop the new files.
+    if (outboxId != null && !_editSaved) {
+      for (final path in state.draft?.files ?? const <String>[]) {
+        if (!_entryFiles.contains(path)) await _repository.deleteFile(path);
+      }
+    }
     return super.close();
   }
+
+  /// [path], unless the outbox entry still uses it.
+  String? _ownFile(String? path) => _entryFiles.contains(path) ? null : path;
 
   /// 128 random bits as hex.
   static String _randomKey() {
@@ -67,6 +93,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   Future<void> load() async {
     emit(state.copyWith(status: FormStatus.loading));
     if (queriedRecordId case final id?) return _loadQueried(id);
+    if (outboxId case final id?) return _loadFromOutbox(id);
     final saved = await _repository.loadDraft();
     final draft = _located(saved ?? RegistrationDraft(startedOn: _now()));
     // A new draft is saved with its first answer, as before.
@@ -77,6 +104,38 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
       case Ok(value: final referenceData):
         // The draft's states' LGAs follow; if they fail, only those
         // fields say so.
+        unawaited(_loadLgas(draft));
+        emit(
+          state.copyWith(
+            status: FormStatus.ready,
+            draft: draft,
+            referenceData: referenceData,
+          ),
+        );
+      case Err(:final failure):
+        emit(state.copyWith(status: FormStatus.failure, failure: failure));
+    }
+  }
+
+  Future<void> _loadFromOutbox(String id) async {
+    final entries = await _repository.outbox();
+    final entry = entries.where((e) => e.id == id).firstOrNull;
+    if (isClosed) return;
+    if (entry == null) {
+      emit(
+        state.copyWith(
+          status: FormStatus.failure,
+          failure: const NotFoundFailure(),
+        ),
+      );
+      return;
+    }
+    _entryFiles = entry.item.files.toSet();
+    final draft = _located(entry.item.copyWith(step: RegistrationStep.review));
+    final reference = await _repository.referenceData();
+    if (isClosed) return;
+    switch (reference) {
+      case Ok(value: final referenceData):
         unawaited(_loadLgas(draft));
         emit(
           state.copyWith(
@@ -170,7 +229,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     if (draft == null) return;
     final path = await _repository.keepPhoto(
       capturedPath,
-      replacing: draft.child[ChildField.facePhoto],
+      replacing: _ownFile(draft.child[ChildField.facePhoto]),
     );
     if (isClosed) return;
     childChanged(ChildField.facePhoto, path);
@@ -241,7 +300,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     if (draft == null) return;
     final path = await _repository.keepPhoto(
       capturedPath,
-      replacing: draft.informant[InformantField.facePhoto],
+      replacing: _ownFile(draft.informant[InformantField.facePhoto]),
     );
     if (isClosed) return;
     informantChanged(InformantField.facePhoto, path);
@@ -253,7 +312,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     if (draft == null) return;
     final path = await _repository.keepSignature(
       png,
-      replacing: draft.informant[InformantField.signature],
+      replacing: _ownFile(draft.informant[InformantField.signature]),
     );
     if (isClosed) return;
     informantChanged(InformantField.signature, path);
@@ -263,7 +322,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     final path = state.draft?.informant[InformantField.signature];
     if (path == null) return;
     informantChanged(InformantField.signature, null);
-    await _repository.deleteFile(path);
+    if (_ownFile(path) case final own?) await _repository.deleteFile(own);
   }
 
   /// Checks and stores a picked image. Returns why it was refused, if it
@@ -279,7 +338,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     if (error != null || draft == null) return error;
     final kept = await _repository.keepDocument(
       path,
-      replacing: draft.documents[type]?.path,
+      replacing: _ownFile(draft.documents[type]?.path),
     );
     final latest = state.draft;
     if (isClosed || latest == null) return null;
@@ -293,7 +352,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     final file = draft?.documents[type];
     if (draft == null || file == null) return;
     _update(draft.copyWith(documents: draft.documents.set(type, null)));
-    await _repository.deleteFile(file.path);
+    if (_ownFile(file.path) case final own?) await _repository.deleteFile(own);
   }
 
   /// "Edit" on the review: opens [step]; "Next" there returns to the review.
@@ -318,6 +377,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     }
     // The date of birth may have changed since Step 1.
     if (!draft.isPaidFor(today)) {
+      if (savesOnDevice) return emit(state.copyWith(showErrors: true));
       await _requestPayment();
       return;
     }
@@ -337,6 +397,8 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     if (keyed.queried case final queried?) {
       return _sendCorrection(keyed, queried.certificateNumber);
     }
+    if (outboxId case final id?) return _saveEdit(id, keyed);
+    if (offline) return _saveForLater(keyed);
     final result = await _repository.submit(
       keyed,
       cancellation: _submission = Cancellation(),
@@ -365,6 +427,19 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
           ),
         );
     }
+  }
+
+  Future<void> _saveForLater(RegistrationDraft draft) async {
+    await _repository.saveForLater(draft);
+    if (isClosed) return;
+    emit(state.copyWith(submitStatus: SubmitStatus.savedForLater));
+  }
+
+  Future<void> _saveEdit(String id, RegistrationDraft draft) async {
+    await _repository.replaceInOutbox(id, draft);
+    _editSaved = true;
+    if (isClosed) return;
+    emit(state.copyWith(submitStatus: SubmitStatus.savedForLater));
   }
 
   /// Updates the queried record. Unlike a new application, no draft on
@@ -406,6 +481,7 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
     }
     // The fee is taken once the date of birth is known.
     if (draft.step == RegistrationStep.child && !draft.isPaidFor(today)) {
+      if (savesOnDevice) return emit(state.copyWith(showErrors: true));
       unawaited(_requestPayment());
       return;
     }
@@ -472,8 +548,9 @@ class RegistrationFormCubit extends Cubit<RegistrationFormState> {
   void _update(RegistrationDraft draft, {bool? showErrors}) {
     emit(state.copyWith(draft: draft, showErrors: showErrors));
     unawaited(_loadLgas(draft));
-    // A correction lives only in memory; the record is on the server.
-    if (draft.queried != null) return;
+    // A correction lives only in memory, as does an outbox edit until
+    // it is saved.
+    if (draft.queried != null || outboxId != null) return;
     _saving = _saving.then((_) => _repository.saveDraft(draft));
   }
 }

@@ -18,6 +18,11 @@ class UserStorage {
   /// [clearDrafts]: someone paid for it.
   static String paymentKey(String type) => '$_paymentPrefix$type';
 
+  static const _settingPrefix = 'setting_';
+
+  /// The key for one of the user's settings, also kept by [clearDrafts].
+  static String settingKey(String name) => '$_settingPrefix$name';
+
   String _key(String key) => 'user/${scope.segment}/$key';
 
   Future<String?> read({required String key}) => _storage.read(key: _key(key));
@@ -28,14 +33,14 @@ class UserStorage {
   Future<void> delete({required String key}) => _storage.delete(key: _key(key));
 
   /// Deletes the current user's drafts and draft files, keeping payment
-  /// references. Does nothing before anyone has signed in.
+  /// references and settings. Does nothing before anyone has signed in.
   Future<void> clearDrafts() async {
     if (scope.userId == null) return;
     final prefix = _key('');
-    final payments = _key(_paymentPrefix);
+    final kept = [_key(_paymentPrefix), _key(_settingPrefix)];
     final keys = [
       for (final key in (await _storage.readAll()).keys)
-        if (key.startsWith(prefix) && !key.startsWith(payments)) key,
+        if (key.startsWith(prefix) && !kept.any(key.startsWith)) key,
     ];
     for (final key in keys) {
       await _storage.delete(key: key);

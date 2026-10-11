@@ -323,6 +323,32 @@ void main() {
     );
   });
 
+  group('NinCheckCubit offline', () {
+    late FakeBirthRegistrationRepository repository;
+
+    setUp(
+      () => repository = FakeBirthRegistrationRepository()
+        // Would fail if it were asked.
+        ..ninResult = const Err(NetworkFailure()),
+    );
+
+    blocTest<NinCheckCubit, NinCheckState>(
+      'keeps the NIN unchecked and starts the draft',
+      build: () => NinCheckCubit(repository, offline: true, now: () => _today),
+      act: (cubit) async {
+        cubit
+          ..answered(true)
+          ..ninChanged('12345678901');
+        await cubit.proceed();
+      },
+      verify: (cubit) {
+        expect(cubit.state.isDone, isTrue);
+        expect(repository.draft?.childNin, '12345678901');
+        expect(repository.draft?.child, const ChildParticulars());
+      },
+    );
+  });
+
   group('RegistrationFormCubit', () {
     late FakeBirthRegistrationRepository repository;
 
@@ -500,6 +526,39 @@ void main() {
           expect(cubit.state.step, RegistrationStep.mother);
           expect(cubit.state.draft?.paymentReference, 'BR-PAID');
         },
+      );
+
+      blocTest<RegistrationFormCubit, RegistrationFormState>(
+        "offline, the fee can't be paid, so Step 1 stops there",
+        build: () =>
+            RegistrationFormCubit(repository, offline: true, now: () => _today),
+        act: (cubit) async {
+          await cubit.load();
+          cubit.next();
+          await pumpEventQueue();
+        },
+        verify: (cubit) {
+          expect(cubit.state.askForPayment, isFalse);
+          expect(cubit.state.showErrors, isTrue);
+          expect(cubit.state.step, RegistrationStep.child);
+        },
+      );
+
+      blocTest<RegistrationFormCubit, RegistrationFormState>(
+        'offline, a fee paid before going offline still counts',
+        setUp: () => repository.draft = RegistrationDraft(
+          startedOn: _today,
+          childHasNin: false,
+          child: olderChild,
+          paymentReference: 'BR-PAID',
+        ),
+        build: () =>
+            RegistrationFormCubit(repository, offline: true, now: () => _today),
+        act: (cubit) async {
+          await cubit.load();
+          cubit.next();
+        },
+        verify: (cubit) => expect(cubit.state.step, RegistrationStep.mother),
       );
 
       blocTest<RegistrationFormCubit, RegistrationFormState>(

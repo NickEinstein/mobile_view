@@ -17,15 +17,20 @@ import 'package:vital_reg_mobile/l10n/l10n.dart';
 /// "New Birth Registration": asks whether the child has a NIN. [onDone]
 /// (from the router) opens the form once the draft is started.
 class NinCheckPage extends StatelessWidget {
-  const NinCheckPage({required this.onDone, super.key});
+  const NinCheckPage({required this.onDone, this.offline = false, super.key});
 
   final VoidCallback onDone;
+
+  /// Offline mode is on.
+  final bool offline;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          NinCheckCubit(GetIt.instance<BirthRegistrationRepository>()),
+      create: (_) => NinCheckCubit(
+        GetIt.instance<BirthRegistrationRepository>(),
+        offline: offline,
+      ),
       child: NinCheckView(onDone: onDone),
     );
   }
@@ -98,6 +103,15 @@ class NinCheckView extends StatelessWidget {
                           onChanged: cubit.ninChanged,
                           onSubmitted: (_) => unawaited(cubit.proceed()),
                         ),
+                        if (state.offline) ...[
+                          const SizedBox(height: Spacing.sm),
+                          Text(
+                            l10n.brOfflineNinNote,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppPalette.muted,
+                            ),
+                          ),
+                        ],
                       ],
                       if (failure != null) ...[
                         const SizedBox(height: Spacing.md),
@@ -114,6 +128,7 @@ class NinCheckView extends StatelessWidget {
                 AppButton(
                   label: switch (state.hasNin) {
                     null => l10n.brValidate,
+                    true when state.offline => l10n.brProceed,
                     true => l10n.brValidateNin,
                     false => l10n.brProceed,
                   },

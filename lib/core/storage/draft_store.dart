@@ -38,6 +38,10 @@ class DraftStore<T extends Object> {
   Future<void> save(T draft) =>
       _storage.write(key: key, value: jsonEncode(_toJson(draft)));
 
+  /// Deletes the draft but not its files, which now belong to something
+  /// else (e.g. an outbox entry).
+  Future<void> forget() => _storage.delete(key: key);
+
   /// Deletes the draft and its files, and returns what was deleted so the
   /// caller can tidy up anything else that belonged to it.
   Future<T?> discard() async {

@@ -51,6 +51,8 @@ flutter:
     - assets/images/auth/
     - assets/images/branding/
     - assets/images/onboarding/
+    # Place lists for offline mode when none were downloaded yet.
+    - assets/reference/
     # Font licences, shown on the licences page (required by the OFL).
     - assets/fonts/OFL-Poppins.txt
     - assets/fonts/OFL-OpenSans.txt

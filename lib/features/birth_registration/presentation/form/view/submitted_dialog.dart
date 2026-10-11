@@ -1,5 +1,42 @@
 part of 'registration_form_page.dart';
 
+/// Offline: the application is on the device, waiting to be sent.
+/// Completes when the user taps Ok.
+Future<void> _showSavedForLaterDialog(BuildContext context) => showDialog<void>(
+  context: context,
+  barrierDismissible: false,
+  builder: (dialogContext) {
+    final l10n = dialogContext.l10n;
+    final textTheme = Theme.of(dialogContext).textTheme;
+    return PopScope(
+      canPop: false,
+      child: AppDialog(
+        children: [
+          Text(
+            l10n.brSavedForLaterTitle,
+            textAlign: TextAlign.center,
+            style: textTheme.titleLarge?.copyWith(
+              color: AppPalette.brand,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          Text(
+            l10n.brSavedForLaterMessage,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium?.copyWith(color: AppPalette.ink),
+          ),
+          const SizedBox(height: Spacing.lg),
+          AppButton(
+            label: l10n.brOk,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ],
+      ),
+    );
+  },
+);
+
 /// "Application Successfully Submitted", with the tracking ID to copy if
 /// the API gave one. Completes when the user taps Ok.
 Future<void> _showSubmittedDialog(

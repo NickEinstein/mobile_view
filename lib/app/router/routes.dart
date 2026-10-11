@@ -14,6 +14,10 @@ abstract final class AppRoutes {
   static const birthNinCheck = '$birthRegistration/new';
   static const birthForm = '$birthRegistration/form';
   static const birthPayment = '$birthRegistration/payment';
+  static const birthOutbox = '$birthRegistration/outbox';
+  static const birthOutboxEditPattern = '$birthOutbox/:id';
+  static String birthOutboxEdit(String id) =>
+      '$birthOutbox/${Uri.encodeComponent(id)}';
   static const birthQueriedPattern = '$birthRegistration/queried/:id';
   static String birthQueried(String id) =>
       '$birthRegistration/queried/${Uri.encodeComponent(id)}';

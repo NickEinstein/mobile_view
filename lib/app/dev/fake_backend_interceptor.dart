@@ -132,6 +132,17 @@ class FakeBackendInterceptor extends Interceptor {
           'status': paid ? 'completed' : 'pending',
           'reference': reference,
         });
+      case ('GET', _) when path.startsWith('/verify-trackingid/'):
+        _ok(
+          handler,
+          options,
+          path.endsWith('/000000000000000')
+              ? {'status': false}
+              : {
+                  'status': true,
+                  'data': {'surname': 'Ogunlade', 'firstname': 'Bolaji'},
+                },
+        );
       case ('GET', _) when path.startsWith('/verify-nin/'):
         _ok(handler, options, _ninRecord(path.substring(12)));
       // As the backend: `/add` returns the new record, `/no-nin` its

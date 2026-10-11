@@ -7,6 +7,7 @@ final class NinCheckState extends Equatable {
     this.isSubmitting = false,
     this.isDone = false,
     this.failure,
+    this.offline = false,
   });
 
   /// Null until the user answers.
@@ -17,6 +18,9 @@ final class NinCheckState extends Equatable {
   /// The draft exists; the page moves on to the form.
   final bool isDone;
   final Failure? failure;
+
+  /// Offline mode: the NIN isn't verified here.
+  final bool offline;
 
   bool get ninLooksValid => NinCheckCubit._ninPattern.hasMatch(nin);
 
@@ -39,10 +43,18 @@ final class NinCheckState extends Equatable {
     isSubmitting: isSubmitting ?? this.isSubmitting,
     isDone: isDone ?? this.isDone,
     failure: failure,
+    offline: offline,
   );
 
   @override
-  List<Object?> get props => [hasNin, nin, isSubmitting, isDone, failure];
+  List<Object?> get props => [
+    hasNin,
+    nin,
+    isSubmitting,
+    isDone,
+    failure,
+    offline,
+  ];
 
   /// Keeps the NIN out of logs and test output.
   @override

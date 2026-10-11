@@ -9,11 +9,14 @@ import 'package:vital_reg_mobile/features/birth_registration/domain/entities/reg
 part 'nin_check_state.dart';
 
 /// "Does the child have a NIN?" A NIN's record prefills the child. Starts
-/// the draft once answered.
+/// the draft once answered. [offline], the NIN is kept unchecked.
 class NinCheckCubit extends Cubit<NinCheckState> {
-  NinCheckCubit(this._repository, {DateTime Function()? now})
-    : _now = now ?? DateTime.now,
-      super(const NinCheckState());
+  NinCheckCubit(
+    this._repository, {
+    bool offline = false,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now,
+       super(NinCheckState(offline: offline));
 
   static final _ninPattern = RegExp(r'^\d{11}$');
 
@@ -30,7 +33,7 @@ class NinCheckCubit extends Cubit<NinCheckState> {
     emit(state.copyWith(isSubmitting: true));
 
     var child = const ChildParticulars();
-    if (hasNin) {
+    if (hasNin && !state.offline) {
       final result = await _repository.verifyNin(state.nin);
       if (isClosed) return;
       switch (result) {

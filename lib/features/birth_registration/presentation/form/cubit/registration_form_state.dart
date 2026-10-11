@@ -2,7 +2,8 @@ part of 'registration_form_cubit.dart';
 
 enum FormStatus { loading, ready, failure }
 
-enum SubmitStatus { idle, submitting, failed, submitted }
+/// [savedForLater]: offline, the application went to the outbox.
+enum SubmitStatus { idle, submitting, failed, submitted, savedForLater }
 
 final class RegistrationFormState extends Equatable {
   const RegistrationFormState({
