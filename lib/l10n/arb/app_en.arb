@@ -107,7 +107,13 @@
   "tryAgain": "Try again",
   "navHome": "Home",
   "navServices": "Services",
-  "navApplications": "Applications",
+  "profileUserName": "User name",
+  "profileEmail": "Email address",
+  "profilePhone": "Phone number",
+  "profileCentre": "Registration centre",
+  "profileState": "State",
+  "profileLga": "LGA",
+  "profileRegistrar": "Registrar",
   "navProfile": "Profile",
   "openMenu": "Open menu",
   "closeMenu": "Close menu",
@@ -116,7 +122,6 @@
   "logOutConfirmTitle": "Log out?",
   "logOutConfirmMessage": "Applications you haven't submitted, with their photos and documents, will be removed from this device. Payments you have made are kept.",
   "logOutCancel": "Cancel",
-  "tabComingSoon": "This section is under construction.",
   "homeGreeting": "Welcome, {name}",
   "@homeGreeting": {
     "placeholders": {

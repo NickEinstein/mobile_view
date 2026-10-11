@@ -70,8 +70,7 @@ class AppShell extends StatelessWidget {
 enum _AppTab {
   home(AppIcons.home, 0),
   services(AppIcons.services, null),
-  applications(AppIcons.applications, 1),
-  profile(AppIcons.profile, 2);
+  profile(AppIcons.profile, 1);
 
   const _AppTab(this.icon, this.branch);
 
@@ -86,7 +85,6 @@ enum _AppTab {
   String label(AppLocalizations l10n) => switch (this) {
     _AppTab.home => l10n.navHome,
     _AppTab.services => l10n.navServices,
-    _AppTab.applications => l10n.navApplications,
     _AppTab.profile => l10n.navProfile,
   };
 }

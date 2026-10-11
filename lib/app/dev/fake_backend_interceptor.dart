@@ -53,8 +53,14 @@ class FakeBackendInterceptor extends Interceptor {
             'Email': 'favour.allison@demo.test',
             'First_Name': 'Favour',
             'Last_Name': 'Allison',
+            'Phone_No': '08130845852',
             'Role_ID': 3,
+            'roles': {'id': 3, 'name': 'Registrar'},
             'Reg_Center_ID': 12,
+            'Registration_Centres': {
+              'Reg_Center_ID': 12,
+              'Reg_Center_Name': 'Ikeja Registration Centre',
+            },
           },
           'access_token': 'fake-access-token',
         });
